@@ -15,13 +15,13 @@ resource "google_storage_bucket" "rhythmic_bucket" {
 # Tạo VM cho Kafka 
 resource "google_compute_instance" "kafka_vm" {
   name         = "kafka-vm"
-  machine_type = "e2-micro"
+  machine_type = "e2-medium"
   tags         = ["kafka"]
 
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = 10
+      size  = 30
     }
   }
 
@@ -81,7 +81,7 @@ resource "google_compute_instance" "airflow_vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = 10
+      size  = 20
     }
   }
 

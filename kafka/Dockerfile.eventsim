@@ -5,8 +5,6 @@ WORKDIR /app
 # Cài đặt các dependencies
 RUN apt-get update && apt-get install -y \
     git \
-    wget \
-    tar \
     && rm -rf /var/lib/apt/lists/*
 
 # Clone repository eventsim
@@ -20,14 +18,6 @@ RUN pip install -r requirements.txt && \
     pip install h5py tables
 
 # Tạo thư mục cho dữ liệu
-RUN mkdir -p /data/MillionSongSubset
-
-# Tải và giải nén Million Song Dataset Subset
-RUN wget http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz -O /tmp/millionsongsubset.tar.gz && \
-    tar -xzf /tmp/millionsongsubset.tar.gz -C /data/MillionSongSubset && \
-    rm /tmp/millionsongsubset.tar.gz
-
-# Tạo file config.json mặc định với cấu hình phù hợp với HDF5
-RUN echo '{"users": 1000, "songs": 10000, "artists": 1000, "h5_data_path": "/data/MillionSongSubset"}' > /data/config.json
+RUN mkdir -p /data
 
 ENTRYPOINT ["python", "eventsim.py"] 

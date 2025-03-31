@@ -9,6 +9,9 @@ kafka/
 ├── config/
 │   └── server.properties    # Cấu hình Kafka
 ├── data/                    # Thư mục dữ liệu (sẽ được tạo khi chạy prepare_data.sh)
+│   ├── zookeeper/          # Dữ liệu Zookeeper
+│   ├── kafka/              # Dữ liệu Kafka
+│   └── eventsim/           # Dữ liệu Eventsim và Million Song Dataset
 ├── Dockerfile.eventsim     # Dockerfile cho Eventsim
 ├── docker-compose.yml      # Cấu hình Docker Compose
 ├── prepare_data.sh         # Script chuẩn bị dữ liệu
