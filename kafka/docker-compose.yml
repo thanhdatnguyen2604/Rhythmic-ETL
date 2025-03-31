@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   zookeeper:
     image: wurstmeister/zookeeper:latest
@@ -9,6 +11,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./data/zookeeper:/data
+    networks:
+      - kafka-network
 
   kafka:
     image: wurstmeister/kafka:latest
@@ -34,7 +38,9 @@ services:
     depends_on:
       - zookeeper
     restart: unless-stopped
+    networks:
+      - kafka-network
 
 networks:
-  streamify-network:
+  kafka-network:
     driver: bridge 
