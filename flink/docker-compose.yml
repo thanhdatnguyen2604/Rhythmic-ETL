@@ -1,0 +1,28 @@
+services:
+  jobmanager:
+    image: flink:latest
+    container_name: flink-jobmanager
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - FLINK_PROPERTIES=jobmanager.memory.process.size:512m,taskmanager.memory.process.size:500m
+    volumes:
+      - ./config/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml
+      - ./data:/opt/flink/data
+    restart: unless-stopped
+
+  taskmanager:
+    image: flink:latest
+    container_name: flink-taskmanager
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - FLINK_PROPERTIES=jobmanager.memory.process.size:512m,taskmanager.memory.process.size:500m
+    volumes:
+      - ./config/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml
+      - ./data:/opt/flink/data
+    restart: unless-stopped 

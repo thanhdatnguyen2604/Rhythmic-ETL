@@ -1,0 +1,13 @@
+rhythmic_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: rhythmic_dataset_dbt
+      threads: 4
+      keyfile: "/opt/dbt/service_account.json"
+      timeout_seconds: 300
+      location: US
+      priority: interactive 

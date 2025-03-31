@@ -1,0 +1,18 @@
+# Core dependencies
+kafka-python==2.0.2
+google-cloud-storage==2.7.0
+google-cloud-bigquery==3.3.5
+
+# Airflow dependencies
+apache-airflow==2.6.1
+apache-airflow-providers-google==8.9.0
+apache-airflow-providers-apache-kafka==1.0.0
+
+# dbt dependencies
+dbt-core==1.4.1
+dbt-bigquery==1.4.1
+
+# Development tools
+pytest==7.3.1
+black==23.3.0
+isort==5.12.0

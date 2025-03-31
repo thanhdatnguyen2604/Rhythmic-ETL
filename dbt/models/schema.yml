@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: stg_listen_events
+    description: "Processed listen events data"
+    columns:
+      - name: artist
+        description: "Artist name"
+      - name: song
+        description: "Song name"
+      - name: duration
+        description: "Song duration (seconds)"
+      - name: ts
+        description: "Event timestamp"
+      - name: userId
+        description: "User ID"
+
+  - name: stg_page_view_events
+    description: "Page view events data"
+    columns:
+      - name: page
+        description: "Page name"
+      - name: ts
+        description: "Event timestamp"
+      - name: userId
+        description: "User ID"
+
+  - name: stg_auth_events
+    description: "Authentication events data"
+    columns:
+      - name: ts
+        description: "Event timestamp"
+      - name: userId
+        description: "User ID"
+      - name: success
+        description: "Authentication result (success/failure)"
+
+  - name: dim_users
+    description: "User dimension table"
+    columns:
+      - name: user_id
+        description: "User ID"
+      - name: first_name
+        description: "First name"
+      - name: last_name
+        description: "Last name"
+      - name: gender
+        description: "Gender"
+      - name: level
+        description: "Account level"
+      - name: state
+        description: "State"
+
+  - name: dim_songs
+    description: "Song dimension table"
+    columns:
+      - name: song_id
+        description: "Song ID"
+      - name: song_name
+        description: "Song name"
+      - name: artist_name
+        description: "Artist name"
+      - name: duration
+        description: "Song duration (seconds)"
+
+  - name: fact_song_plays
+    description: "Song play events table"
+    columns:
+      - name: play_id
+        description: "Play ID"
+      - name: user_id
+        description: "User ID"
+      - name: song_id
+        description: "Song ID"
+      - name: timestamp
+        description: "Event timestamp"
+      - name: session_id
+        description: "Session ID" 

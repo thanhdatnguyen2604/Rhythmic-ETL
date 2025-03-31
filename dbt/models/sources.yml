@@ -1,0 +1,34 @@
+version: 2
+
+sources:
+  - name: rhythmic
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: "{{ env_var('BIGQUERY_DATASET', 'rhythmic_dataset') }}"
+    tables:
+      - name: listen_events
+        description: "Song play events"
+        columns:
+          - name: artist
+            description: "Artist name"
+          - name: song
+            description: "Song name"
+          - name: duration
+            description: "Song duration"
+          - name: ts
+            description: "Event timestamp"
+
+      - name: page_view_events
+        description: "Page view events"
+        columns:
+          - name: page
+            description: "Page name"
+          - name: ts
+            description: "Event timestamp"
+
+      - name: auth_events
+        description: "Authentication events"
+        columns:
+          - name: userId
+            description: "User ID"
+          - name: success
+            description: "Authentication result" 

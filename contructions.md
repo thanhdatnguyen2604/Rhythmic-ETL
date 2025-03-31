@@ -1,7 +1,7 @@
-# Hướng dẫn triển khai dự án Streamify
+# Hướng dẫn triển khai dự án Rthythmic-ETL
 
 ## Giới thiệu
-Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịch vụ phát nhạc trực tuyến. Dự án sử dụng nhiều công nghệ như Kafka, Spark Streaming, dbt, Docker, Airflow, Terraform và GCP.
+Rthythmic-ETL là dự án xử lý dữ liệu thời gian thực mô phỏng dịch vụ phát nhạc trực tuyến. Dự án sử dụng nhiều công nghệ như Kafka, Flink, dbt, Docker, Airflow, Terraform và GCP.
 
 ## Yêu cầu tiên quyết
 - Google Cloud Platform account
@@ -13,8 +13,7 @@ Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịc
 ## Các bước triển khai
 
 ### Bước 1: Cài đặt môi trường
-1. Clone repository về máy local
-2. Cài đặt các công cụ cần thiết:
+Cài đặt các công cụ cần thiết:
    - Docker & Docker Compose
    - Terraform
    - Python & pip
@@ -59,7 +58,7 @@ Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịc
      User [USERNAME]
      IdentityFile ~/.ssh/id_rsa
    
-   Host spark-vm
+   Host flink-vm
      HostName [IP_ADDRESS]
      User [USERNAME]
      IdentityFile ~/.ssh/id_rsa
@@ -77,8 +76,8 @@ Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịc
    ```
 2. Clone repository:
    ```bash
-   git clone [REPO_URL]
-   cd streamify
+   git clone [REPO_URL] Rthythmic-ETL
+   cd Rthythmic-ETL
    ```
 3. Chạy Kafka và Zookeeper bằng Docker Compose:
    ```bash
@@ -95,34 +94,30 @@ Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịc
    docker-compose up -d
    ```
 
-### Bước 6: Thiết lập Spark Streaming
-1. SSH vào Spark VM:
+### Bước 6: Thiết lập Flink
+1. SSH vào Flink VM:
    ```bash
-   ssh spark-vm
+   ssh flink-vm
    ```
 2. Clone repository:
    ```bash
-   git clone [REPO_URL]
-   cd streamify
+   git clone [REPO_URL] Rthythmic-ETL
+   cd Rthythmic-ETL
    ```
-3. Cài đặt dependencies:
+3. Cài đặt Flink:
    ```bash
-   pip install -r requirements.txt
+   cd ~/Rhythmic-ETL/flink
+   ./install_flink.sh
    ```
-4. Cài đặt Spark:
+4. Cấu hình biến môi trường cho Flink:
    ```bash
-   cd setup
-   ./install_spark.sh
+   export FLINK_HOME=/opt/flink
+   export PATH=$PATH:$FLINK_HOME/bin
    ```
-5. Cấu hình biến môi trường cho Spark:
+5. Chạy ứng dụng Flink:
    ```bash
-   export KAFKA_ADDRESS=[KAFKA_VM_IP]
-   export GCP_GCS_BUCKET=[YOUR_BUCKET_NAME]
-   ```
-6. Chạy ứng dụng Spark Streaming:
-   ```bash
-   cd ../spark_streaming
-   spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 stream_all_events.py
+   cd ../flink_jobs
+   flink run -d stream_all_events.py
    ```
 
 ### Bước 7: Thiết lập Airflow
@@ -132,8 +127,8 @@ Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịc
    ```
 2. Clone repository:
    ```bash
-   git clone [REPO_URL]
-   cd streamify
+   git clone [REPO_URL] Rthythmic-ETL
+   cd Rthythmic-ETL
    ```
 3. Cài đặt Airflow bằng Docker Compose:
    ```bash
@@ -176,14 +171,13 @@ Streamify là dự án xử lý dữ liệu thời gian thực mô phỏng dịc
 - Đảm bảo cổng 9092 đã được mở
 - Khởi động lại: `docker-compose restart`
 
-### Spark Streaming lỗi
-- Kiểm tra biến môi trường đã được đặt chính xác
-- Xem logs tại: `spark-submit --verbose ...`
-- Đảm bảo kết nối giữa Spark và Kafka
+### Flink lỗi
+- Xem logs tại: `flink run -d ...`
+- Đảm bảo kết nối giữa Flink và Kafka
 
 ### Airflow DAGs không chạy
 - Kiểm tra logs: `docker-compose logs airflow-webserver`
 - Đảm bảo connections và variables đã được cấu hình đúng
 
 ## Kết luận
-Sau khi hoàn thành các bước trên, bạn sẽ có một pipeline dữ liệu hoàn chỉnh xử lý dữ liệu thời gian thực từ Kafka, qua Spark Streaming, lưu trữ trên GCS, xử lý bằng Airflow và dbt, và cuối cùng là phân tích trên BigQuery.
+Sau khi hoàn thành các bước trên, bạn sẽ có một pipeline dữ liệu hoàn chỉnh xử lý dữ liệu thời gian thực từ Kafka, qua Flink, lưu trữ trên GCS, xử lý bằng Airflow và dbt, và cuối cùng là phân tích trên BigQuery.

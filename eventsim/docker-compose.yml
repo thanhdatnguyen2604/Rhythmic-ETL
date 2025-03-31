@@ -1,0 +1,25 @@
+services:
+  eventsim:
+    image: custom/eventsim:latest
+    container_name: eventsim
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - MILLION_SONG_DATASET_PATH=/data/millionsong-subset
+      - RATE=10
+      - KAFKA_TOPIC_PREFIX=
+    volumes:
+      - ./data:/data
+    depends_on:
+      - kafka
+    networks:
+      - kafka-network
+    command: >
+      --kafka-broker kafka:9092
+      --million-song-dataset /data/millionsong-subset
+      --user-count 1000
+      --song-count 10000
+      --output-format json
+
+networks:
+  kafka-network:
+    external: true
