@@ -10,7 +10,7 @@ services:
       - JVMFLAGS=-Xmx256m -Xms128m
     restart: unless-stopped
     volumes:
-      - ./kafka/data/zookeeper:/data
+      - ./data/zookeeper:/data
     networks:
       - rhythmic-network
 
@@ -33,8 +33,8 @@ services:
       KAFKA_NUM_NETWORK_THREADS: 2
       KAFKA_NUM_IO_THREADS: 2
     volumes:
-      - ./kafka/data/kafka:/var/lib/kafka/data
-      - ./kafka/config/server.properties:/opt/kafka/config/server.properties
+      - ./data/kafka:/var/lib/kafka/data
+      - ./config/server.properties:/opt/kafka/config/server.properties
     depends_on:
       - zookeeper
     restart: unless-stopped
@@ -42,12 +42,14 @@ services:
       - rhythmic-network
 
   eventsim:
-    image: zachmandeville/eventsim:latest
+    build: 
+      context: .
+      dockerfile: Dockerfile.eventsim
     container_name: eventsim
     depends_on:
       - kafka
     volumes:
-      - ./eventsim/data:/data
+      - ./data/eventsim:/data
     command: >
       --kafka-broker kafka:9092
       --song-data /data/MillionSongSubset
