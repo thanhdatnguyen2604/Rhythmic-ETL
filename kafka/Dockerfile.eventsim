@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     git \
     wget \
-    unzip \
+    tar \
     && rm -rf /var/lib/apt/lists/*
 
 # Clone repository eventsim
@@ -21,10 +21,10 @@ RUN pip install -r requirements.txt
 # Tạo thư mục cho dữ liệu
 RUN mkdir -p /data/MillionSongSubset
 
-# Tải Million Song Dataset Subset
-RUN wget http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz -O /tmp/million-song-subset.zip && \
-    unzip /tmp/million-song-subset.zip -d /data/MillionSongSubset && \
-    rm /tmp/million-song-subset.zip
+# Tải và giải nén Million Song Dataset Subset
+RUN wget http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz -O /tmp/millionsongsubset.tar.gz && \
+    tar -xzf /tmp/millionsongsubset.tar.gz -C /data/MillionSongSubset && \
+    rm /tmp/millionsongsubset.tar.gz
 
 # Tạo file config.json mặc định
 RUN echo '{"users": 1000, "songs": 10000, "artists": 1000}' > /data/config.json
