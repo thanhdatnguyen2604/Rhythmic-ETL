@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3'
 
 services:
   zookeeper:
@@ -10,9 +10,9 @@ services:
       - JVMFLAGS=-Xmx256m -Xms128m
     restart: unless-stopped
     volumes:
-      - ./data/zookeeper:/data
+      - ./kafka/data/zookeeper:/data
     networks:
-      - kafka-network
+      - rhythmic-network
 
   kafka:
     image: wurstmeister/kafka:latest
@@ -33,14 +33,31 @@ services:
       KAFKA_NUM_NETWORK_THREADS: 2
       KAFKA_NUM_IO_THREADS: 2
     volumes:
-      - ./data/kafka:/var/lib/kafka/data
-      - ./config/server.properties:/opt/kafka/config/server.properties
+      - ./kafka/data/kafka:/var/lib/kafka/data
+      - ./kafka/config/server.properties:/opt/kafka/config/server.properties
     depends_on:
       - zookeeper
     restart: unless-stopped
     networks:
-      - kafka-network
+      - rhythmic-network
+
+  eventsim:
+    image: zachmandeville/eventsim:latest
+    container_name: eventsim
+    depends_on:
+      - kafka
+    volumes:
+      - ./eventsim/data:/data
+    command: >
+      --kafka-broker kafka:9092
+      --song-data /data/MillionSongSubset
+      --config /data/config.json
+      --from-time 2023-01-01
+      --nusers 1000
+      --duration 24h
+    networks:
+      - rhythmic-network
 
 networks:
-  kafka-network:
+  rhythmic-network:
     driver: bridge 
