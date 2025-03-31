@@ -16,7 +16,8 @@ RUN git clone https://github.com/Interana/eventsim.git .
 COPY requirements.txt .
 
 # Cài đặt Python dependencies
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && \
+    pip install h5py tables
 
 # Tạo thư mục cho dữ liệu
 RUN mkdir -p /data/MillionSongSubset
@@ -26,7 +27,7 @@ RUN wget http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz -O /t
     tar -xzf /tmp/millionsongsubset.tar.gz -C /data/MillionSongSubset && \
     rm /tmp/millionsongsubset.tar.gz
 
-# Tạo file config.json mặc định
-RUN echo '{"users": 1000, "songs": 10000, "artists": 1000}' > /data/config.json
+# Tạo file config.json mặc định với cấu hình phù hợp với HDF5
+RUN echo '{"users": 1000, "songs": 10000, "artists": 1000, "h5_data_path": "/data/MillionSongSubset"}' > /data/config.json
 
 ENTRYPOINT ["python", "eventsim.py"] 
