@@ -114,29 +114,70 @@ Dưới đây là các bước để triển khai toàn bộ dự án Rhythmic-E
    ```
 
 2. Cấu hình SSH trong file `~/.ssh/config`:
-   ```
+   ```bash
+   # Lấy IP của các VM từ Terraform output
+   cd terraform
+   terraform output
+   
+   # Cấu hình SSH (thêm vào ~/.ssh/config)
    Host kafka-vm
-     HostName [KAFKA_VM_IP]
-     User [SSH_USERNAME]
+     HostName $(terraform output -raw kafka_vm_external_ip)
+     User rhythmic
+     Port 22
      IdentityFile ~/.ssh/id_rsa
+     ServerAliveInterval 60
+     ServerAliveCountMax 3
 
    Host flink-vm
-     HostName [FLINK_VM_IP]
-     User [SSH_USERNAME]
+     HostName $(terraform output -raw flink_vm_external_ip)
+     User rhythmic
+     Port 22
      IdentityFile ~/.ssh/id_rsa
+     ServerAliveInterval 60
+     ServerAliveCountMax 3
 
    Host airflow-vm
-     HostName [AIRFLOW_VM_IP]
-     User [SSH_USERNAME]
+     HostName $(terraform output -raw airflow_vm_external_ip)
+     User rhythmic
+     Port 22
      IdentityFile ~/.ssh/id_rsa
+     ServerAliveInterval 60
+     ServerAliveCountMax 3
    ```
 
 3. Kiểm tra kết nối:
    ```bash
-   ssh kafka-vm
-   ssh flink-vm
-   ssh airflow-vm
+   # Kiểm tra kết nối đến từng VM
+   ssh -v kafka-vm
+   ssh -v flink-vm
+   ssh -v airflow-vm
    ```
+
+   Nếu gặp lỗi "Connection timed out", hãy kiểm tra:
+   1. Firewall rules trong GCP:
+      ```bash
+      # Tạo firewall rule cho SSH
+      gcloud compute firewall-rules create allow-ssh \
+          --direction=INGRESS \
+          --priority=1000 \
+          --network=default \
+          --action=ALLOW \
+          --rules=tcp:22 \
+          --source-ranges=0.0.0.0/0 \
+          --target-tags=kafka,flink,airflow
+      ```
+   
+   2. Tags của VM:
+      ```bash
+      # Kiểm tra tags của VM
+      gcloud compute instances describe kafka-vm --zone=us-central1-a --format="get(tags.items)"
+      ```
+   
+   3. IP của VM:
+      ```bash
+      # Kiểm tra IP của VM
+      gcloud compute instances describe kafka-vm --zone=us-central1-a --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+      ```
 
 ### Bước 5: Thiết lập Kafka và Eventsim
 
@@ -227,7 +268,7 @@ Dưới đây là các bước để triển khai toàn bộ dự án Rhythmic-E
    export KAFKA_BROKER="kafka-vm:9092"
    export GCS_BUCKET="rhythmic-bucket"
 
-   # Chuyển đổi mã nguồn từ Spark sang Flink
+   # Chuyển đổi mã nguồn từ Flink sang Flink
    cd ../flink_jobs
    
    # Chạy Flink job
