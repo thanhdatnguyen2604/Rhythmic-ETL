@@ -22,7 +22,7 @@ RUN pip install -r requirements.txt
 RUN mkdir -p /data/MillionSongSubset
 
 # Tải Million Song Dataset Subset
-RUN wget https://storage.googleapis.com/million-song-dataset-subset/million-song-subset.zip -O /tmp/million-song-subset.zip && \
+RUN wget http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz -O /tmp/million-song-subset.zip && \
     unzip /tmp/million-song-subset.zip -d /data/MillionSongSubset && \
     rm /tmp/million-song-subset.zip
 
