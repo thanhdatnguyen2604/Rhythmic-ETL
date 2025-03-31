@@ -1,0 +1,21 @@
+FROM apache/flink:1.17.0-scala_2.12-java11
+
+# Cài đặt Python và pip
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cài đặt các thư viện Python cần thiết
+RUN pip3 install apache-flink==1.17.0 \
+    kafka-python \
+    apache-flink-libraries
+
+# Tạo thư mục cho jobs
+RUN mkdir -p /opt/flink/jobs
+
+# Copy các file Python jobs
+COPY ../flink_jobs/*.py /opt/flink/jobs/
+
+# Cấp quyền thực thi
+RUN chmod -R 777 /opt/flink/jobs 
