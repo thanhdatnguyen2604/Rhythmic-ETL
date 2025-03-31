@@ -8,12 +8,7 @@ Thư mục này chứa cấu hình và script để chạy Kafka và Eventsim tr
 kafka/
 ├── config/
 │   └── server.properties    # Cấu hình Kafka
-├── data/
-│   ├── zookeeper/          # Dữ liệu Zookeeper
-│   ├── kafka/              # Dữ liệu Kafka
-│   └── eventsim/           # Dữ liệu Eventsim
-│       ├── MillionSongSubset/  # Dataset
-│       └── config.json     # Cấu hình Eventsim
+├── data/                    # Thư mục dữ liệu (sẽ được tạo khi chạy prepare_data.sh)
 ├── Dockerfile.eventsim     # Dockerfile cho Eventsim
 ├── docker-compose.yml      # Cấu hình Docker Compose
 ├── prepare_data.sh         # Script chuẩn bị dữ liệu
@@ -21,7 +16,7 @@ kafka/
 └── README.md              # Tài liệu này
 ```
 
-## Các bước triển khai
+## Các bước triển khai trên kafka-vm
 
 1. Clone repository và di chuyển vào thư mục kafka:
    ```bash
@@ -40,20 +35,31 @@ kafka/
    ```
    Script này sẽ:
    - Tạo cấu trúc thư mục cần thiết
-   - Tải và giải nén Million Song Dataset
+   - Tải Million Song Dataset (khoảng 1.8GB) từ nguồn chính thức
+   - Giải nén dataset vào thư mục data/eventsim/MillionSongSubset
    - Tạo file cấu hình cho Kafka và Eventsim
+   - Cấp quyền truy cập cho các thư mục
 
-4. Build và khởi động các container:
+4. Kiểm tra dữ liệu đã tải:
+   ```bash
+   # Kiểm tra kích thước dataset
+   du -sh data/eventsim/MillionSongSubset
+   
+   # Kiểm tra số lượng file .h5
+   find data/eventsim/MillionSongSubset -name "*.h5" | wc -l
+   ```
+
+5. Build và khởi động các container:
    ```bash
    docker-compose up -d --build
    ```
 
-5. Kiểm tra trạng thái:
+6. Kiểm tra trạng thái:
    ```bash
    docker-compose ps
    ```
 
-6. Xem logs:
+7. Xem logs:
    ```bash
    # Xem logs của tất cả các service
    docker-compose logs
@@ -87,8 +93,9 @@ kafka/
    rm -rf data/*
    ```
 
-## Lưu ý
+## Lưu ý quan trọng
 
-- Đảm bảo có đủ dung lượng ổ đĩa cho dữ liệu
-- Million Song Dataset có kích thước khoảng 1.8GB
-- Các container cần ít nhất 2GB RAM để hoạt động tốt 
+- **Dữ liệu**: Million Song Dataset sẽ được tải về khi chạy `prepare_data.sh` trên kafka-vm
+- **Dung lượng**: Cần ít nhất 4GB dung lượng trống (1.8GB cho dataset + 2GB cho dữ liệu Kafka)
+- **RAM**: Các container cần ít nhất 2GB RAM để hoạt động tốt
+- **Thời gian**: Quá trình tải và giải nén dataset có thể mất 5-10 phút tùy thuộc vào tốc độ mạng 

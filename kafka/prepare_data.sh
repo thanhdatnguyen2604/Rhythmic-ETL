@@ -1,15 +1,27 @@
 #!/bin/bash
 
+# Kiểm tra dung lượng ổ đĩa
+echo "Kiểm tra dung lượng ổ đĩa..."
+FREE_SPACE=$(df -h . | awk 'NR==2 {print $4}')
+echo "Dung lượng trống hiện tại: $FREE_SPACE"
+
 # Tạo cấu trúc thư mục
 echo "Tạo cấu trúc thư mục..."
 mkdir -p data/{zookeeper,kafka,eventsim} config
 
 # Tải Million Song Dataset Subset
-echo "Tải Million Song Dataset Subset..."
+echo "Tải Million Song Dataset Subset (khoảng 1.8GB)..."
+echo "Nguồn: http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz"
 wget http://labrosa.ee.columbia.edu/~dpwe/tmp/millionsongsubset.tar.gz -O data/eventsim/millionsongsubset.tar.gz
 
+# Kiểm tra file đã tải
+if [ ! -f data/eventsim/millionsongsubset.tar.gz ]; then
+    echo "Lỗi: Không thể tải dataset!"
+    exit 1
+fi
+
 # Giải nén dữ liệu
-echo "Giải nén dữ liệu..."
+echo "Giải nén dữ liệu (có thể mất vài phút)..."
 tar -xzf data/eventsim/millionsongsubset.tar.gz -C data/eventsim
 
 # Xóa file tar.gz
@@ -54,9 +66,15 @@ EOF
 
 # Kiểm tra cấu trúc dữ liệu
 echo "Kiểm tra cấu trúc dữ liệu..."
-find data/eventsim/MillionSongSubset -name "*.h5" | head -n 5
+echo "Số lượng file .h5:"
+find data/eventsim/MillionSongSubset -name "*.h5" | wc -l
+
+echo "Kích thước thư mục MillionSongSubset:"
+du -sh data/eventsim/MillionSongSubset
 
 # Cấp quyền cho thư mục data
+echo "Cấp quyền truy cập cho thư mục data..."
 chmod -R 777 data
 
-echo "Chuẩn bị dữ liệu hoàn tất!" 
+echo "Chuẩn bị dữ liệu hoàn tất!"
+echo "Bạn có thể tiếp tục với lệnh: docker-compose up -d --build" 
