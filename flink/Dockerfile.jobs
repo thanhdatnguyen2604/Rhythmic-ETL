@@ -15,7 +15,7 @@ RUN pip3 install apache-flink==1.17.0 \
 RUN mkdir -p /opt/flink/jobs
 
 # Copy các file Python jobs
-COPY ../flink_jobs/*.py /opt/flink/jobs/
+COPY jobs/*.py /opt/flink/jobs/
 
 # Cấp quyền thực thi
 RUN chmod -R 777 /opt/flink/jobs 

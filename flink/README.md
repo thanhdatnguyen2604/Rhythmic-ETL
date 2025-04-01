@@ -9,6 +9,10 @@ flink/
 ├── config/                 # Cấu hình Flink
 ├── data/                   # Dữ liệu Flink
 │   └── checkpoints/       # Checkpoints
+├── jobs/                  # Python Flink jobs
+│   ├── schema.py
+│   ├── streaming_functions.py
+│   └── stream_all_events.py
 ├── Dockerfile.jobs        # Dockerfile cho Flink jobs
 ├── docker-compose.yml     # Cấu hình Docker Compose
 └── run_jobs.sh           # Script chạy jobs
