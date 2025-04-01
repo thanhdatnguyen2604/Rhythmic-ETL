@@ -4,7 +4,7 @@ provider "google" {
   zone    = var.zone
 }
 
-# Tạo GCS Bucket cho dữ liệu
+# Create GCS Bucket for dataset
 resource "google_storage_bucket" "rhythmic_bucket" {
   name     = var.gcs_bucket_name
   location = var.region
@@ -12,7 +12,7 @@ resource "google_storage_bucket" "rhythmic_bucket" {
   uniform_bucket_level_access = true
 }
 
-# Tạo VM cho Kafka 
+# Create VM for Kafka 
 resource "google_compute_instance" "kafka_vm" {
   name         = "kafka-vm"
   machine_type = "e2-medium"
@@ -42,16 +42,16 @@ resource "google_compute_instance" "kafka_vm" {
   }
 }
 
-# Tạo VM cho Flink (thay vì Spark)
+# Create VM for Flink
 resource "google_compute_instance" "flink_vm" {
   name         = "flink-vm"
-  machine_type = "e2-medium"  # Nâng lên từ e2-micro để đủ tài nguyên
-  tags         = ["flink"]    # Tag đúng với công nghệ sử dụng
+  machine_type = "e2-standard-2"  # 2 vCPU, 8GB RAM
+  tags         = ["flink"]    
 
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = 50  # Nâng lên 50GB theo yêu cầu
+      size  = 50  
     }
   }
 
@@ -72,7 +72,7 @@ resource "google_compute_instance" "flink_vm" {
   }
 }
 
-# Tạo VM cho Airflow
+# Create VM for Airflow
 resource "google_compute_instance" "airflow_vm" {
   name         = "airflow-vm"
   machine_type = "e2-micro"
@@ -97,7 +97,7 @@ resource "google_compute_instance" "airflow_vm" {
   }
 }
 
-# Tạo Dataset trong BigQuery
+# Create Dataset for BigQuery
 resource "google_bigquery_dataset" "rhythmic_dataset" {
   dataset_id                  = var.bq_dataset_name
   friendly_name               = "Rhythmic Dataset"
