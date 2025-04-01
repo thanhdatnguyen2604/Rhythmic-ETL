@@ -1,30 +1,30 @@
 #==============================================================================
-# Cấu hình Flink tối ưu cho e2-micro
+# Config for Flink
 #==============================================================================
 
-# Cấu hình JobManager
-jobmanager.memory.process.size: 512mb
-jobmanager.memory.heap.size: 384mb
+# Config for JobManager
+jobmanager.memory.process.size: 2048mb
+jobmanager.memory.heap.size: 1024mb
 jobmanager.memory.off-heap.size: 128mb
-jobmanager.memory.jvm-metaspace.size: 64m
-jobmanager.memory.jvm-overhead.min: 32m
-jobmanager.memory.jvm-overhead.max: 64m
+jobmanager.memory.jvm-metaspace.size: 256m
+jobmanager.memory.jvm-overhead.min: 256m
+jobmanager.memory.jvm-overhead.max: 512m
 
-# Cấu hình TaskManager
-taskmanager.memory.process.size: 500mb
-taskmanager.memory.framework.heap.size: 64mb
-taskmanager.memory.task.heap.size: 256mb
-taskmanager.memory.network.min: 32mb
-taskmanager.memory.network.max: 64mb
+# Config for TaskManager
+taskmanager.memory.process.size: 4096m
+taskmanager.memory.framework.heap.size: 256mb
+taskmanager.memory.task.heap.size: 1024mb
+taskmanager.memory.network.min: 256mb
+taskmanager.memory.network.max: 512mb
 taskmanager.memory.network.fraction: 0.1
-taskmanager.memory.managed.size: 64mb
-taskmanager.memory.jvm-metaspace.size: 64m
-taskmanager.memory.jvm-overhead.min: 32m
-taskmanager.memory.jvm-overhead.max: 64m
+taskmanager.memory.managed.size: 1024mb
+taskmanager.memory.jvm-metaspace.size: 256m
+taskmanager.memory.jvm-overhead.min: 512m
+taskmanager.memory.jvm-overhead.max: 1024m
 
-# Cấu hình chung
-taskmanager.numberOfTaskSlots: 1
-parallelism.default: 1
+# Config for common
+taskmanager.numberOfTaskSlots: 2
+parallelism.default: 2
 io.tmp.dirs: /tmp/flink
 state.backend: filesystem
 state.checkpoints.dir: file:///tmp/flink/checkpoints
@@ -33,8 +33,8 @@ web.timeout: 10000
 heartbeat.interval: 2000
 heartbeat.timeout: 10000
 
-# Giảm độ lớn của batch để tiết kiệm bộ nhớ
+# Checkpointing config
 jobmanager.execution.failover-strategy: region
-execution.checkpointing.interval: 10s
+execution.checkpointing.interval: 300000
 execution.checkpointing.max-concurrent-checkpoints: 1
-execution.checkpointing.min-pause: 5s 
+execution.checkpointing.min-pause: 5000 
