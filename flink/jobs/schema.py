@@ -2,41 +2,39 @@
 # -*- coding: utf-8 -*-
 
 """
-Rhythmic-ETL: Định nghĩa schema cho các loại sự kiện
+Rhythmic-ETL: Định nghĩa schema cho các sự kiện
 """
 
-from pyflink.table import DataTypes
+# Schema cho listen_events
+listen_event_schema = {
+    'listen_id': 'STRING',
+    'user_id': 'STRING',
+    'song_id': 'STRING',
+    'artist': 'STRING', 
+    'song': 'STRING',
+    'duration': 'INT',
+    'ts': 'BIGINT'
+}
 
-# Schema cho sự kiện nghe nhạc
-listen_event_schema = DataTypes.ROW([
-    DataTypes.FIELD("listen_id", DataTypes.STRING()),
-    DataTypes.FIELD("user_id", DataTypes.STRING()),
-    DataTypes.FIELD("song_id", DataTypes.STRING()),
-    DataTypes.FIELD("artist", DataTypes.STRING()),
-    DataTypes.FIELD("song", DataTypes.STRING()),
-    DataTypes.FIELD("duration", DataTypes.DOUBLE()),
-    DataTypes.FIELD("ts", DataTypes.BIGINT())
-])
+# Schema cho page_view_events
+page_view_event_schema = {
+    'page_view_id': 'STRING',
+    'user_id': 'STRING',
+    'page': 'STRING',
+    'section': 'STRING',
+    'referrer': 'STRING',
+    'browser': 'STRING',
+    'os': 'STRING',
+    'device': 'STRING',
+    'ts': 'BIGINT'
+}
 
-# Schema cho sự kiện xem trang
-page_view_event_schema = DataTypes.ROW([
-    DataTypes.FIELD("page_view_id", DataTypes.STRING()),
-    DataTypes.FIELD("user_id", DataTypes.STRING()),
-    DataTypes.FIELD("page", DataTypes.STRING()),
-    DataTypes.FIELD("section", DataTypes.STRING()),
-    DataTypes.FIELD("referrer", DataTypes.STRING()),
-    DataTypes.FIELD("browser", DataTypes.STRING()),
-    DataTypes.FIELD("os", DataTypes.STRING()),
-    DataTypes.FIELD("device", DataTypes.STRING()),
-    DataTypes.FIELD("ts", DataTypes.BIGINT())
-])
-
-# Schema cho sự kiện xác thực
-auth_event_schema = DataTypes.ROW([
-    DataTypes.FIELD("auth_id", DataTypes.STRING()),
-    DataTypes.FIELD("user_id", DataTypes.STRING()),
-    DataTypes.FIELD("level", DataTypes.STRING()),
-    DataTypes.FIELD("method", DataTypes.STRING()),
-    DataTypes.FIELD("status", DataTypes.STRING()),
-    DataTypes.FIELD("ts", DataTypes.BIGINT())
-]) 
+# Schema cho auth_events
+auth_event_schema = {
+    'auth_id': 'STRING',
+    'user_id': 'STRING',
+    'level': 'STRING',
+    'method': 'STRING',
+    'status': 'STRING',
+    'ts': 'BIGINT'
+} 
