@@ -42,6 +42,7 @@ services:
       - KAFKA_BROKER=kafka:9092
       - H5_DATA_PATH=/data/MillionSongSubset
       - PYTHONUNBUFFERED=1
+      - USE_RANDOM_DATA=true
     command: >
       bash -c "pip install kafka-python h5py &&
                python simple_producer.py"

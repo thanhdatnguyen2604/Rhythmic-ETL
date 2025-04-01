@@ -27,6 +27,7 @@ AUTH_STATUSES = ["success", "fail"]
 AUTH_LEVELS = ["free", "premium", "family"]
 INTERVAL_SEC = float(os.environ.get("INTERVAL_SEC", "0.5"))  # Send event every 0.5 seconds
 H5_DATA_PATH = os.environ.get("H5_DATA_PATH", "/data/MillionSongSubset")
+USE_RANDOM_DATA = os.environ.get("USE_RANDOM_DATA", "false").lower() == "true"
 
 def create_producer():
     """Create and return a Kafka producer"""
@@ -53,15 +54,43 @@ def extract_song_data(h5_file):
     """Extract relevant data from an HDF5 file"""
     try:
         with h5py.File(h5_file, 'r') as f:
-            # Extract basic metadata
-            song_id = f['analysis']['songs']['song_id'][0].decode('utf-8')
-            artist_id = f['analysis']['songs']['artist_id'][0].decode('utf-8')
-            title = f['analysis']['songs']['title'][0].decode('utf-8')
-            artist_name = f['analysis']['songs']['artist_name'][0].decode('utf-8')
+            # Debug - print structure of HDF5 file
+            # print(f"HDF5 file structure for {h5_file}:")
+            # print_hdf5_structure(f, "")
             
-            # Extract additional data if available
-            duration = float(f['analysis']['songs']['duration'][0])
-            tempo = float(f['analysis']['songs']['tempo'][0])
+            # Different schema possibilities in Million Song Dataset
+            if 'analysis' in f and 'songs' in f['analysis']:
+                # Schema 1
+                songs = f['analysis']['songs']
+                if 'song_id' in songs:
+                    song_id = songs['song_id'][0].decode('utf-8')
+                    artist_id = songs['artist_id'][0].decode('utf-8')
+                    title = songs['title'][0].decode('utf-8')
+                    artist_name = songs['artist_name'][0].decode('utf-8')
+                    duration = float(songs['duration'][0])
+                    tempo = float(songs['tempo'][0])
+                else:
+                    raise KeyError("Song ID not found in analysis/songs")
+            elif 'metadata' in f and 'songs' in f['metadata']:
+                # Schema 2
+                songs = f['metadata']['songs']
+                song_id = songs[0]['song_id'][0].decode('utf-8')
+                artist_id = songs[0]['artist_id'][0].decode('utf-8')
+                title = songs[0]['title'][0].decode('utf-8')
+                artist_name = songs[0]['artist_name'][0].decode('utf-8')
+                duration = float(songs[0]['duration'][0])
+                tempo = 120.0  # Default tempo if not available
+            else:
+                # Try looking at root level
+                if 'song_id' in f:
+                    song_id = f['song_id'][0].decode('utf-8')
+                    artist_id = f['artist_id'][0].decode('utf-8')
+                    title = f['title'][0].decode('utf-8')
+                    artist_name = f['artist_name'][0].decode('utf-8')
+                    duration = float(f['duration'][0]) if 'duration' in f else 240.0
+                    tempo = float(f['tempo'][0]) if 'tempo' in f else 120.0
+                else:
+                    raise KeyError("Could not find song data in recognized schema")
             
             return {
                 'song_id': song_id,
@@ -72,8 +101,35 @@ def extract_song_data(h5_file):
                 'tempo': tempo
             }
     except Exception as e:
-        print(f"Error reading {h5_file}: {e}")
+        # print(f"Error reading {h5_file}: {e}")
         return None
+
+def print_hdf5_structure(obj, indent):
+    """Helper function to print HDF5 structure"""
+    for key in obj.keys():
+        print(f"{indent}{key}")
+        if isinstance(obj[key], h5py.Group):
+            print_hdf5_structure(obj[key], indent + "  ")
+        else:
+            print(f"{indent}  {obj[key].shape} {obj[key].dtype}")
+
+def generate_random_song_data():
+    """Generate random song data when HDF5 files are not available"""
+    song_id = f"S{random.randint(10000, 99999)}"
+    artist_id = f"A{random.randint(10000, 99999)}"
+    artists = ["The Beatles", "Queen", "Taylor Swift", "BTS", "Drake", "Beyoncé", 
+               "Ed Sheeran", "Adele", "Bruno Mars", "Ariana Grande"]
+    song_titles = ["Imagine", "Bohemian Rhapsody", "Shape of You", "Dynamite", 
+                  "One Dance", "Halo", "Perfect", "Hello", "Uptown Funk", "7 Rings"]
+    
+    return {
+        'song_id': song_id,
+        'artist_id': artist_id,
+        'title': random.choice(song_titles),
+        'artist_name': random.choice(artists),
+        'duration': random.uniform(180.0, 300.0),
+        'tempo': random.uniform(80.0, 160.0)
+    }
 
 def generate_listen_event(song_data):
     """Generate a song listen event using real song data"""
@@ -153,22 +209,32 @@ def generate_auth_event():
 def main():
     """Main function to run the producer"""
     try:
-        # Load song files
-        song_files = load_song_files()
-        if not song_files:
-            print(f"No .h5 files found in {H5_DATA_PATH}. Please check the path.")
-            print("Run prepare_data.sh to download the Million Song Dataset.")
-            return
-        
-        # Pre-extract some song data to reduce file I/O
-        print("Pre-extracting song data from some files...")
         songs_data = []
-        for file in random.sample(song_files, min(100, len(song_files))):
-            song_data = extract_song_data(file)
-            if song_data:
-                songs_data.append(song_data)
         
-        print(f"Pre-extracted data for {len(songs_data)} songs")
+        # Try to load song data from HDF5 files unless USE_RANDOM_DATA is set
+        if not USE_RANDOM_DATA:
+            # Load song files
+            song_files = load_song_files()
+            if song_files:
+                # Pre-extract some song data to reduce file I/O
+                print("Pre-extracting song data from some files...")
+                sample_size = min(100, len(song_files))
+                for file in random.sample(song_files, sample_size):
+                    song_data = extract_song_data(file)
+                    if song_data:
+                        songs_data.append(song_data)
+                
+                print(f"Pre-extracted data for {len(songs_data)} songs")
+            else:
+                print(f"No .h5 files found in {H5_DATA_PATH}.")
+                print("Will use random song data instead.")
+        
+        # If no songs extracted or USE_RANDOM_DATA is true, generate random data
+        if not songs_data:
+            print("Generating random song data...")
+            for _ in range(100):
+                songs_data.append(generate_random_song_data())
+            print(f"Generated {len(songs_data)} random songs")
         
         # Create Kafka producer
         producer = create_producer()
@@ -208,6 +274,8 @@ def main():
         print("Stopping producer")
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         if 'producer' in locals():
             producer.close()
