@@ -11,6 +11,8 @@ services:
     volumes:
       - ./data/zookeeper:/var/lib/zookeeper/data
       - ./data/zookeeper/log:/var/lib/zookeeper/log
+    networks:
+      - rhythmic-network
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -19,7 +21,7 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_BROKER_ID: 0
+      KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-vm:9092
@@ -43,6 +45,8 @@ services:
     volumes:
       - ./data/kafka:/var/lib/kafka/data
       - ./config:/etc/kafka
+    networks:
+      - rhythmic-network
 
   eventsim:
     build:
@@ -51,10 +55,11 @@ services:
     depends_on:
       - kafka
     volumes:
-      - ./data/eventsim:/data
-      - ./config:/config
+      - ./data:/data
     environment:
       - KAFKA_BROKER=kafka:9092
+    networks:
+      - rhythmic-network
     command: ["python", "eventsim.py", "--config", "/config/config.json"]
 
 networks:
