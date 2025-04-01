@@ -1,54 +1,32 @@
-FROM apache/flink:1.17.0-scala_2.12-java11
+FROM python:3.9-slim
 
-# Install Python and pip
+# Install dependencies
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
+    apt-get install -y curl wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY jobs/requirements.txt /opt/flink/jobs/
-RUN pip3 install -r /opt/flink/jobs/requirements.txt
-
-# Copy Python jobs
-COPY jobs/ /opt/flink/jobs/
-
-# Set environment variables
-ENV PYTHONPATH=/opt/flink/jobs
-ENV PYTHON=/usr/bin/python3
-
-# Set working directory
-WORKDIR /opt/flink/jobs
-
-# Make scripts executable
-RUN chmod +x /opt/flink/jobs/*.py
-
 # Kiểm tra phiên bản Python
-RUN python3 --version
-
-# Tạo symbolic link từ python3 đến python
-RUN ln -sf /usr/bin/python3 /usr/bin/python
-
-# Đặt biến môi trường cho PyFlink
-ENV PYFLINK_EXECUTABLE=python3
-
-# Tải connector Kafka và JSON
-RUN wget -P /opt/flink/lib/ https://repo.maven.apache.org/maven2/org/apache/flink/flink-connector-kafka/1.17.0/flink-connector-kafka-1.17.0.jar && \
-    wget -P /opt/flink/lib/ https://repo.maven.apache.org/maven2/org/apache/flink/flink-json/1.17.0/flink-json-1.17.0.jar
-
-# Tạo thư mục cho Google Cloud credentials
-RUN mkdir -p /opt/flink/secrets
+RUN python3 --version && \
+    pip3 --version
 
 # Cài đặt các thư viện Python cần thiết
 RUN pip3 install --no-cache-dir \
-    apache-flink==1.17.0 \
-    kafka-python \
+    apache-flink \
     apache-flink-libraries \
     google-cloud-storage \
+    kafka-python \
+    python-dateutil \
+    pytz \
     requests
 
 # Cấp quyền thực thi
-RUN chmod -R 777 /opt/flink/jobs
+RUN mkdir -p /opt/flink/jobs
+WORKDIR /opt/flink/jobs
 
-# Cấp quyền thực thi cho scripts
-COPY *.sh /opt/flink/
-RUN chmod +x /opt/flink/*.sh 
+# Set environment variables
+ENV PYTHONPATH=/opt/flink/jobs
+ENV PYTHON_BIN=python3
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+# Default entrypoint and command are set in docker-compose.yml 

@@ -28,7 +28,7 @@ services:
         jobmanager.memory.off-heap.size: 128m
         jobmanager.memory.jvm-metaspace.size: 256m
         jobmanager.memory.jvm-overhead.min: 256m
-        jobmanager.memory.jvm-overhead.max: 512m
+        jobmanager.memory.jvm-overhead.max: 768m
     volumes:
       - ./config:/opt/flink/conf
       - ./checkpoints:/tmp/flink-checkpoints
@@ -54,7 +54,7 @@ services:
         taskmanager.memory.framework.max: 512m
         taskmanager.memory.jvm-metaspace.size: 256m
         taskmanager.memory.jvm-overhead.min: 512m
-        taskmanager.memory.jvm-overhead.max: 1024m
+        taskmanager.memory.jvm-overhead.max: 1200m
         taskmanager.memory.task.heap.size: 1024m
         taskmanager.memory.framework.heap.size: 256m
     volumes:
@@ -80,6 +80,8 @@ services:
       - KAFKA_BROKER=${KAFKA_BROKER:-kafka-vm:9092}
       - GCS_BUCKET=${GCS_BUCKET:-rhythmic-events}
       - GOOGLE_APPLICATION_CREDENTIALS=/opt/flink/secrets/gcp-credentials.json
+    entrypoint: ["python3"]
+    command: ["-c", "print('Job builder ready. Use docker exec -it jobs-builder python3 /opt/flink/jobs/stream_all_events.py to start jobs')"]
     depends_on:
       - jobmanager
       - taskmanager
