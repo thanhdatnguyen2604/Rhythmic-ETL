@@ -42,7 +42,7 @@ services:
       - rhythmic-network
 
   eventsim:
-    image: viirya/eventsim
+    image: trivadis/eventsim
     container_name: eventsim
     depends_on:
       - kafka
