@@ -1,0 +1,17 @@
+{
+    "h5_data_path": "/data/MillionSongSubset",
+    "kafka_broker": "kafka:9092",
+    "nusers": 1000,
+    "duration": "24h",
+    "from_time": "2023-01-01",
+    "topics": {
+        "listen_events": {
+            "name": "listen_events",
+            "partitions": 1
+        },
+        "page_view_events": {
+            "name": "page_view_events",
+            "partitions": 1
+        }
+    }
+} 
