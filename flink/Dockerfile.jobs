@@ -1,12 +1,26 @@
 FROM apache/flink:1.17.0-scala_2.12-java11
 
-# Cài đặt Python và pip
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    wget \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install Python and pip
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY jobs/requirements.txt /opt/flink/jobs/
+RUN pip3 install -r /opt/flink/jobs/requirements.txt
+
+# Copy Python jobs
+COPY jobs/ /opt/flink/jobs/
+
+# Set environment variables
+ENV PYTHONPATH=/opt/flink/jobs
+ENV PYTHON=/usr/bin/python3
+
+# Set working directory
+WORKDIR /opt/flink/jobs
+
+# Make scripts executable
+RUN chmod +x /opt/flink/jobs/*.py
 
 # Kiểm tra phiên bản Python
 RUN python3 --version
@@ -31,12 +45,6 @@ RUN pip3 install --no-cache-dir \
     apache-flink-libraries \
     google-cloud-storage \
     requests
-
-# Tạo thư mục cho jobs
-RUN mkdir -p /opt/flink/jobs
-
-# Copy các file Python jobs
-COPY jobs/*.py /opt/flink/jobs/
 
 # Cấp quyền thực thi
 RUN chmod -R 777 /opt/flink/jobs

@@ -6,85 +6,72 @@ networks:
 
 services:
   jobmanager:
-    image: flink:1.17.0
-    hostname: jobmanager
+    image: apache/flink:1.17.0-scala_2.12-java11
     container_name: jobmanager
     ports:
       - "8081:8081"
-    command: jobmanager
     environment:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
-        jobmanager.memory.process.size: 1024m
-        parallelism.default: 1
         state.backend: filesystem
-        state.checkpoints.dir: file:///opt/flink/checkpoints
-        execution.checkpointing.interval: 60000
-        execution.checkpointing.mode: EXACTLY_ONCE
-        execution.checkpointing.timeout: 30000
-        restart-strategy: fixed-delay
-        restart-strategy.fixed-delay.attempts: 3
-        restart-strategy.fixed-delay.delay: 10000
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        state.savepoints.dir: file:///tmp/flink-savepoints
+        state.backend.incremental: true
+        state.backend.local-recovery: true
+        execution.checkpointing.interval: 300000
+        execution.checkpointing.timeout: 600000
+        execution.checkpointing.min-pause: 5000
+        execution.checkpointing.max-concurrent-checkpoints: 1
     volumes:
-      - ./checkpoints:/opt/flink/checkpoints
-      - ./jobs:/opt/flink/jobs
-      - ./config:/opt/flink/config
+      - ./config:/opt/flink/conf
+      - ./checkpoints:/tmp/flink-checkpoints
+      - ./savepoints:/tmp/flink-savepoints
       - ./secrets:/opt/flink/secrets
+    command: jobmanager
     networks:
       - flink-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   taskmanager:
-    image: flink:1.17.0
-    hostname: taskmanager
+    image: apache/flink:1.17.0-scala_2.12-java11
     container_name: taskmanager
-    depends_on:
-      - jobmanager
-    command: taskmanager
     environment:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2
         taskmanager.memory.process.size: 1536m
         taskmanager.memory.managed.size: 512m
-        taskmanager.numberOfTaskSlots: 2
-        parallelism.default: 1
-        state.backend: filesystem
-        state.checkpoints.dir: file:///opt/flink/checkpoints
+        taskmanager.memory.network.min: 128m
+        taskmanager.memory.network.max: 256m
+        taskmanager.memory.framework.min: 128m
+        taskmanager.memory.framework.max: 256m
     volumes:
-      - ./checkpoints:/opt/flink/checkpoints
-      - ./jobs:/opt/flink/jobs
-      - ./config:/opt/flink/config
+      - ./config:/opt/flink/conf
+      - ./checkpoints:/tmp/flink-checkpoints
+      - ./savepoints:/tmp/flink-savepoints
       - ./secrets:/opt/flink/secrets
+    command: taskmanager
+    depends_on:
+      - jobmanager
     networks:
       - flink-network
-    restart: unless-stopped
 
   jobs-builder:
     build:
       context: .
       dockerfile: Dockerfile.jobs
     container_name: jobs-builder
+    volumes:
+      - ./jobs:/opt/flink/jobs
+      - ./secrets:/opt/flink/secrets
+    environment:
+      - KAFKA_BROKER=${KAFKA_BROKER:-kafka-vm:9092}
+      - GCS_BUCKET=${GCS_BUCKET:-rhythmic-events}
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/flink/secrets/gcp-credentials.json
     depends_on:
       - jobmanager
       - taskmanager
-    volumes:
-      - ./jobs:/opt/flink/jobs
-      - ./config:/opt/flink/config
-      - ./secrets:/opt/flink/secrets
-    environment:
-      - GOOGLE_APPLICATION_CREDENTIALS=/opt/flink/secrets/cred.json
-      - KAFKA_BROKER=kafka-vm:9092
-      - GCS_BUCKET=rhythmic-bucket
-      - CHECKPOINT_DIR=file:///opt/flink/checkpoints
-      - CHECKPOINT_INTERVAL=60000
-      - PARALLELISM=1
     networks:
       - flink-network
 
