@@ -3,7 +3,6 @@ FROM python:3.9-slim
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libhdf5-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -15,13 +14,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code and config
 COPY eventsim.py .
-COPY config.json /config/
+COPY config/config.json /config/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-# Run the application
+# Command to run the application
 CMD ["python", "eventsim.py", "--config", "/config/config.json"]
