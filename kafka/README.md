@@ -1,104 +1,104 @@
-# Kafka và Eventsim Setup
+# Kafka and Eventsim Setup
 
-Thư mục này chứa cấu hình và script để chạy Kafka và Eventsim trên kafka-vm.
+This directory contains configuration and scripts to run Kafka and Eventsim on kafka-vm.
 
-## Cấu trúc thư mục
+## Directory Structure
 
 ```
 kafka/
 ├── config/
-│   └── server.properties    # Cấu hình Kafka
-├── data/                    # Thư mục dữ liệu (sẽ được tạo khi chạy prepare_data.sh)
-│   ├── zookeeper/          # Dữ liệu Zookeeper
-│   ├── kafka/              # Dữ liệu Kafka
-│   └── eventsim/           # Dữ liệu Eventsim và Million Song Dataset
-├── Dockerfile.eventsim     # Dockerfile cho Eventsim
-├── docker-compose.yml      # Cấu hình Docker Compose
-├── prepare_data.sh         # Script chuẩn bị dữ liệu
+│   └── server.properties    # Kafka configuration
+├── data/                    # Data directory (created when running prepare_data.sh)
+│   ├── zookeeper/          # Zookeeper data
+│   ├── kafka/              # Kafka data
+│   └── eventsim/           # Eventsim and Million Song Dataset data
+├── Dockerfile.eventsim     # Dockerfile for Eventsim
+├── docker-compose.yml      # Docker Compose configuration
+├── prepare_data.sh         # Data preparation script
 ├── requirements.txt        # Python dependencies
-└── README.md              # Tài liệu này
+└── README.md              # This documentation
 ```
 
-## Các bước triển khai trên kafka-vm
+## Deployment Steps on kafka-vm
 
-1. Clone repository và di chuyển vào thư mục kafka:
+1. Clone repository and move to kafka directory:
    ```bash
    git clone <repository_url>
    cd kafka
    ```
 
-2. Cấp quyền thực thi cho script:
+2. Make scripts executable:
    ```bash
    chmod +x prepare_data.sh
    ```
 
-3. Chạy script chuẩn bị dữ liệu:
+3. Run data preparation script:
    ```bash
    ./prepare_data.sh
    ```
-   Script này sẽ:
-   - Tạo cấu trúc thư mục cần thiết
-   - Tải Million Song Dataset (khoảng 1.8GB) từ nguồn chính thức
-   - Giải nén dataset vào thư mục data/eventsim/MillionSongSubset
-   - Tạo file cấu hình cho Kafka và Eventsim
-   - Cấp quyền truy cập cho các thư mục
+   This script will:
+   - Create necessary directory structure
+   - Download Million Song Dataset (approximately 1.8GB) from official source
+   - Extract dataset to data/eventsim/MillionSongSubset directory
+   - Create configuration files for Kafka and Eventsim
+   - Set access permissions for directories
 
-4. Kiểm tra dữ liệu đã tải:
+4. Check downloaded data:
    ```bash
-   # Kiểm tra kích thước dataset
+   # Check dataset size
    du -sh data/eventsim/MillionSongSubset
    
-   # Kiểm tra số lượng file .h5
+   # Check number of .h5 files
    find data/eventsim/MillionSongSubset -name "*.h5" | wc -l
    ```
 
-5. Build và khởi động các container:
+5. Build and start containers:
    ```bash
    docker-compose up -d --build
    ```
 
-6. Kiểm tra trạng thái:
+6. Check status:
    ```bash
    docker-compose ps
    ```
 
-7. Xem logs:
+7. View logs:
    ```bash
-   # Xem logs của tất cả các service
+   # View logs for all services
    docker-compose logs
 
-   # Xem logs của một service cụ thể
+   # View logs for specific service
    docker-compose logs kafka
    docker-compose logs eventsim
    ```
 
-## Kiểm tra hoạt động
+## Operational Checks
 
-1. Kiểm tra Kafka topics:
+1. Check Kafka topics:
    ```bash
    docker-compose exec kafka kafka-topics.sh --list --bootstrap-server localhost:9092
    ```
 
-2. Xem dữ liệu từ Eventsim:
+2. View data from Eventsim:
    ```bash
    docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic listen_events --from-beginning --max-messages 5
    ```
 
-## Dừng và xóa
+## Stop and Cleanup
 
-1. Dừng các container:
+1. Stop containers:
    ```bash
    docker-compose down
    ```
 
-2. Xóa dữ liệu (nếu cần):
+2. Delete data (if needed):
    ```bash
    rm -rf data/*
    ```
 
-## Lưu ý quan trọng
+## Important Notes
 
-- **Dữ liệu**: Million Song Dataset sẽ được tải về khi chạy `prepare_data.sh` trên kafka-vm
-- **Dung lượng**: Cần ít nhất 4GB dung lượng trống (1.8GB cho dataset + 2GB cho dữ liệu Kafka)
-- **RAM**: Các container cần ít nhất 2GB RAM để hoạt động tốt
-- **Thời gian**: Quá trình tải và giải nén dataset có thể mất 5-10 phút tùy thuộc vào tốc độ mạng 
+- **Data**: Million Song Dataset will be downloaded when running `prepare_data.sh` on kafka-vm
+- **Storage**: Requires at least 4GB free space (1.8GB for dataset + 2GB for Kafka data)
+- **RAM**: Containers need at least 2GB RAM to operate properly
+- **Time**: Dataset download and extraction may take 5-10 minutes depending on network speed 

@@ -1,137 +1,167 @@
-# Cấu trúc dự án Rhythmic-ETL
+# Project Structure
 
-Dự án Rhythmic-ETL là một pipeline xử lý dữ liệu thời gian thực cho dịch vụ phát nhạc trực tuyến. Dưới đây là cấu trúc thư mục và mục đích của từng thành phần.
+This document describes the structure of the Rhythmic-ETL project.
 
-## 1. Terraform - Hạ tầng GCP
-
-```
-terraform/
-├── main.tf          # Định nghĩa tài nguyên trên GCP (VM, bucket, dataset)
-├── variables.tf     # Khai báo biến cho Terraform
-└── outputs.tf       # Định nghĩa đầu ra (IP, tên resource)
-```
-
-**Mục đích**: Triển khai hạ tầng trên GCP, bao gồm:
-- 3 máy ảo e2-micro (tối ưu chi phí) cho Kafka, Flink và Airflow
-- GCS bucket để lưu trữ dữ liệu
-- BigQuery dataset để phân tích dữ liệu
-
-## 2. Kafka - Streaming Platform
+## Root Directory Structure
 
 ```
-kafka/
-├── config/
-│   └── server.properties    # Cấu hình tối ưu cho Kafka
-├── docker-compose.yml       # Triển khai Kafka và Zookeeper
-└── data/                    # Thư mục lưu dữ liệu (được tạo khi chạy)
+Rhythmic-ETL/
+├── airflow/              # Airflow configuration and DAGs
+├── docs/                 # Project documentation
+├── flink/               # Flink jobs and configuration
+├── kafka/               # Kafka and Eventsim setup
+├── terraform/           # Infrastructure as Code
+└── README.md            # Project overview
 ```
 
-**Mục đích**: Cung cấp nền tảng xử lý stream để:
-- Nhận và lưu trữ các sự kiện nghe nhạc
-- Phân phối dữ liệu đến ứng dụng Flink
-- Cấu hình tối ưu cho môi trường e2-micro
+## Component Details
 
-## 3. Flink - Streaming Processing
-
-```
-flink/
-├── config/
-│   └── flink-conf.yaml      # Cấu hình tối ưu cho Flink
-├── docker-compose.yml       # Triển khai Flink JobManager và TaskManager
-└── data/                    # Thư mục lưu dữ liệu (được tạo khi chạy)
-
-flink_jobs/
-├── stream_all_events.py     # Job xử lý các sự kiện từ Kafka
-├── streaming_functions.py   # Các hàm xử lý và biến đổi dữ liệu
-└── schema.py                # Định nghĩa schema cho các loại sự kiện
-```
-
-**Mục đích**: Xử lý dữ liệu streaming từ Kafka để:
-- Biến đổi dữ liệu thành format phù hợp
-- Lưu trữ kết quả vào GCS theo định dạng parquet
-- Phân vùng dữ liệu theo ngày, giờ để tối ưu truy vấn
-
-## 4. Airflow - Orchestration
+### 1. Airflow (`airflow/`)
 
 ```
 airflow/
-├── config/
-│   └── airflow.cfg          # Cấu hình tối ưu cho Airflow
-├── docker-compose.yml       # Triển khai Airflow với LocalExecutor
-├── dags/                    # Thư mục chứa DAGs
-│   ├── gcs_to_bigquery.py   # DAG tạo external tables từ GCS
-│   └── trigger_dbt.py       # DAG kích hoạt transformation dbt
-└── logs/                    # Thư mục lưu logs (được tạo khi chạy)
+├── dags/                # Airflow DAGs
+├── logs/                # Airflow logs
+├── plugins/             # Custom Airflow plugins
+├── config/              # Airflow configuration
+├── secrets/             # GCP credentials
+└── docker-compose.yml   # Airflow services
 ```
 
-**Mục đích**: Lập lịch và điều phối các công việc để:
-- Tạo external tables từ dữ liệu trên GCS
-- Kích hoạt các transformation dbt
-- Giám sát và quản lý luồng dữ liệu
-
-## 5. dbt - Transformation
+### 2. Flink (`flink/`)
 
 ```
-dbt/
-├── dbt_project.yml          # Cấu hình dbt project
-├── profiles.yml             # Cấu hình kết nối đến BigQuery
-├── models/                  # Chứa các model SQL
-│   ├── staging/             # Staging models
-│   │   ├── stg_listen_events.sql
-│   │   ├── stg_page_view_events.sql
-│   │   └── stg_auth_events.sql
-│   ├── marts/               # Dimensional models
-│   │   ├── dim_users.sql
-│   │   ├── dim_songs.sql
-│   │   └── fact_listens.sql
-│   └── schema.yml           # Định nghĩa schema và tests
-└── macros/                  # Macros SQL tái sử dụng
+flink/
+├── jobs/               # Flink Python jobs
+│   ├── schema.py       # Event schemas
+│   ├── streaming_functions.py
+│   └── stream_all_events.py
+├── config/             # Flink configuration
+├── data/               # Flink data
+│   └── checkpoints/    # Checkpoint data
+├── secrets/            # GCP credentials
+├── Dockerfile.jobs     # Flink job container
+├── docker-compose.yml  # Flink services
+└── run_jobs.sh         # Job execution script
 ```
 
-**Mục đích**: Biến đổi dữ liệu trong BigQuery để:
-- Tạo các bảng dimension và fact theo mô hình dimensional
-- Tạo các bảng tổng hợp để phân tích
-- Áp dụng các kiểm tra chất lượng dữ liệu
-
-## 6. Scripts - Công cụ hỗ trợ
+### 3. Kafka (`kafka/`)
 
 ```
-scripts/
-├── budget_alert.sh          # Thiết lập cảnh báo ngân sách GCP
-└── vm_control.sh            # Điều khiển bật/tắt VM để tiết kiệm chi phí
+kafka/
+├── config/             # Kafka configuration
+├── data/               # Kafka and Eventsim data
+│   ├── zookeeper/      # Zookeeper data
+│   ├── kafka/          # Kafka data
+│   └── eventsim/       # Million Song Dataset
+├── Dockerfile.eventsim # Eventsim container
+├── docker-compose.yml  # Kafka services
+└── prepare_data.sh     # Data preparation script
 ```
 
-**Mục đích**: Cung cấp các công cụ để:
-- Quản lý chi phí GCP
-- Bật/tắt VM khi cần thiết
-- Tự động hóa các tác vụ quản trị
+### 4. Terraform (`terraform/`)
 
-## 7. Docs - Tài liệu
+```
+terraform/
+├── main.tf             # Main Terraform configuration
+├── variables.tf        # Input variables
+├── outputs.tf          # Output values
+└── .terraform/         # Terraform state
+```
+
+### 5. Documentation (`docs/`)
 
 ```
 docs/
-├── README.md                # Tổng quan về tối ưu chi phí
-├── kafka_optimization.md    # Tài liệu về tối ưu Kafka
-├── flink_optimization.md    # Tài liệu về tối ưu Flink
-├── airflow_optimization.md  # Tài liệu về tối ưu Airflow
-├── gcp_optimization.md      # Tài liệu về tối ưu GCP
-├── structure-project.md     # Cấu trúc dự án (file này)
-└── ETL.md                   # Luồng ETL và cách triển khai
+├── ETL.md              # ETL process documentation
+├── million_song_dataset.md
+├── structure-project.md
+├── gcp_optimization.md
+├── airflow_optimization.md
+├── flink_optimization.md
+└── kafka_optimization.md
 ```
 
-**Mục đích**: Cung cấp tài liệu về:
-- Cấu trúc và thành phần của dự án
-- Cách tối ưu chi phí
-- Hướng dẫn triển khai và vận hành
+## Key Files
 
-## 8. Eventsim - Data Generator
+### Configuration Files
 
-```
-eventsim/
-└── docker-compose.yml       # Triển khai công cụ mô phỏng sự kiện
-```
+1. **Docker Compose Files**:
+   - `kafka/docker-compose.yml`: Kafka and Zookeeper services
+   - `flink/docker-compose.yml`: Flink job manager and task manager
+   - `airflow/docker-compose.yml`: Airflow webserver and scheduler
 
-**Mục đích**: Tạo dữ liệu mẫu để mô phỏng:
-- Các sự kiện nghe nhạc từ người dùng
-- Các page view trên ứng dụng
-- Các sự kiện xác thực
+2. **Dockerfiles**:
+   - `kafka/Dockerfile.eventsim`: Eventsim container
+   - `flink/Dockerfile.jobs`: Flink jobs container
+
+3. **Terraform Files**:
+   - `terraform/main.tf`: GCP infrastructure
+   - `terraform/variables.tf`: Input variables
+   - `terraform/outputs.tf`: Output values
+
+### Scripts
+
+1. **Data Preparation**:
+   - `kafka/prepare_data.sh`: Downloads and prepares Million Song Dataset
+
+2. **Job Execution**:
+   - `flink/run_jobs.sh`: Runs Flink streaming jobs
+   - `flink/check_setup.sh`: Validates Flink setup
+
+### Documentation
+
+1. **Process Documentation**:
+   - `docs/ETL.md`: ETL process details
+   - `docs/million_song_dataset.md`: Dataset information
+
+2. **Optimization Guides**:
+   - `docs/gcp_optimization.md`: GCP resource optimization
+   - `docs/airflow_optimization.md`: Airflow performance tuning
+   - `docs/flink_optimization.md`: Flink job optimization
+   - `docs/kafka_optimization.md`: Kafka performance tuning
+
+## Data Flow
+
+1. **Data Ingestion**:
+   - Eventsim generates events from Million Song Dataset
+   - Events are sent to Kafka topics
+
+2. **Stream Processing**:
+   - Flink jobs process events from Kafka
+   - Processed data is stored in GCS
+
+3. **Batch Processing**:
+   - Airflow DAGs schedule batch jobs
+   - Results are stored in BigQuery
+
+## Security Considerations
+
+1. **Credentials**:
+   - GCP credentials stored in `*/secrets/cred.json`
+   - Not committed to version control
+
+2. **Network Security**:
+   - Internal communication between services
+   - External access limited to necessary ports
+
+3. **Data Access**:
+   - Service accounts with minimal required permissions
+   - Data encryption at rest and in transit
+
+## Development Guidelines
+
+1. **Code Organization**:
+   - Follow component-specific directory structure
+   - Keep configuration separate from code
+   - Document all major components
+
+2. **Version Control**:
+   - Use meaningful commit messages
+   - Keep sensitive data out of version control
+   - Tag releases appropriately
+
+3. **Testing**:
+   - Test components individually
+   - Validate data flow end-to-end
+   - Monitor system performance

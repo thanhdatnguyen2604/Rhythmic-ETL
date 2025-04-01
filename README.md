@@ -1,24 +1,24 @@
-# Rhythmic-ETL: Streaming và Batch Data Processing
+# Rhythmic-ETL: Streaming and Batch Data Processing
 
-Rhythmic-ETL là một dự án End-to-End Data Engineering sử dụng Kafka, Flink, và Airflow để xử lý dữ liệu streaming và batch từ ứng dụng phát nhạc.
+Rhythmic-ETL is an End-to-End Data Engineering project using Kafka, Flink, and Airflow to process streaming and batch data from a music streaming application.
 
-## Kiến trúc hệ thống
+## System Architecture
 
-Dự án triển khai trên 3 VM riêng biệt trên GCP:
+The project is deployed on 3 separate VMs on GCP:
 
-1. **kafka-vm**: Chứa Kafka Cluster và ứng dụng Eventsim để mô phỏng dữ liệu streaming.
-2. **flink-vm**: Chứa Flink để xử lý dữ liệu streaming và lưu vào GCS.
-3. **airflow-vm**: Chứa Airflow để điều phối các tác vụ ETL và Analytics.
+1. **kafka-vm**: Contains Kafka Cluster and Eventsim application to simulate streaming data.
+2. **flink-vm**: Contains Flink to process streaming data and store it in GCS.
+3. **airflow-vm**: Contains Airflow to orchestrate ETL and Analytics tasks.
 
-![Kiến trúc hệ thống](docs/images/architecture.png)
+![System Architecture](docs/images/architecture.png)
 
-## Thành phần chính
+## Main Components
 
-- **Terraform**: Tự động hóa việc triển khai hạ tầng trên GCP
-- **Kafka & Eventsim**: Tạo và xử lý các sự kiện dạng streaming
-- **Flink**: Xử lý dữ liệu streaming theo thời gian thực
-- **GCS**: Lưu trữ dữ liệu phân tích
-- **Airflow**: Điều phối các quá trình ETL
+- **Terraform**: Automates infrastructure deployment on GCP
+- **Kafka & Eventsim**: Generate and process streaming events
+- **Flink**: Process streaming data in real-time
+- **GCS**: Store analytics data
+- **Airflow**: Orchestrate ETL processes
 
 ## Quick Start
 
@@ -31,7 +31,7 @@ Dự án triển khai trên 3 VM riêng biệt trên GCP:
 
 2. **Setup Kafka**:
    ```bash
-   # SSH vào kafka-vm
+   # SSH into kafka-vm
    cd kafka
    chmod +x prepare_data.sh
    ./prepare_data.sh
@@ -40,10 +40,10 @@ Dự án triển khai trên 3 VM riêng biệt trên GCP:
 
 3. **Setup Flink**:
    ```bash
-   # SSH vào flink-vm
+   # SSH into flink-vm
    cd flink
    mkdir -p secrets
-   # Copy GCP credentials vào secrets/cred.json
+   # Copy GCP credentials to secrets/cred.json
    chmod +x *.sh
    ./check_setup.sh
    docker-compose up -d
@@ -52,26 +52,26 @@ Dự án triển khai trên 3 VM riêng biệt trên GCP:
 
 4. **Setup Airflow**:
    ```bash
-   # SSH vào airflow-vm
+   # SSH into airflow-vm
    cd airflow
    mkdir -p dags logs plugins config secrets
-   # Copy GCP credentials vào secrets/cred.json
+   # Copy GCP credentials to secrets/cred.json
    docker-compose up airflow-init
    docker-compose up -d
    ```
 
-## Tài liệu chi tiết
+## Detailed Documentation
 
-- [Hướng dẫn ETL](docs/ETL.md)
+- [ETL Guide](docs/ETL.md)
 - [Kafka & Eventsim](kafka/README.md)
 - [Flink Jobs](flink/README.md)
 - [Airflow](airflow/README.md)
 - [Million Song Dataset](docs/million_song_dataset.md)
 - [GCP Optimization](docs/gcp_optimization.md)
 
-## Ví dụ phân tích
+## Analysis Examples
 
-1. **Top 10 bài hát được nghe nhiều nhất**:
+1. **Top 10 Most Played Songs**:
    ```sql
    SELECT song, artist, COUNT(*) as plays
    FROM listen_events
@@ -80,7 +80,7 @@ Dự án triển khai trên 3 VM riêng biệt trên GCP:
    LIMIT 10
    ```
 
-2. **Mức độ tương tác theo giờ trong ngày**:
+2. **Hourly Interaction Levels**:
    ```sql
    SELECT EXTRACT(HOUR FROM datetime) as hour, COUNT(*) as interactions
    FROM page_view_events
@@ -88,10 +88,10 @@ Dự án triển khai trên 3 VM riêng biệt trên GCP:
    ORDER BY hour
    ```
 
-## Đóng góp
+## Contributing
 
-Hãy đọc [CONTRIBUTING.md](CONTRIBUTING.md) để biết thêm thông tin về cách đóng góp vào dự án.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
 
-## Giấy phép
+## License
 
-Dự án này được phân phối dưới Giấy phép MIT. Xem [LICENSE](LICENSE) để biết thêm chi tiết.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -3,8 +3,6 @@ version: '3'
 networks:
   flink-network:
     driver: bridge
-  kafka-network:
-    external: true
 
 services:
   jobmanager:
@@ -28,7 +26,6 @@ services:
       - ./scripts:/opt/flink/scripts
     networks:
       - flink-network
-      - kafka-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
@@ -57,5 +54,4 @@ services:
       - ./secrets:/opt/flink/secrets
     networks:
       - flink-network
-      - kafka-network
     restart: unless-stopped 

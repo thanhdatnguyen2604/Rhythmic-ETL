@@ -1,54 +1,54 @@
 # Flink ETL Jobs
 
-Thư mục này chứa các Flink jobs để xử lý dữ liệu streaming từ Kafka và lưu vào Google Cloud Storage (GCS).
+This directory contains Flink jobs for processing streaming data from Kafka and storing it in Google Cloud Storage (GCS).
 
-## Cấu trúc thư mục
+## Directory Structure
 
 ```
 flink/
-├── config/                 # Cấu hình Flink
-├── data/                   # Dữ liệu Flink
+├── config/                 # Flink configuration
+├── data/                   # Flink data
 │   └── checkpoints/       # Checkpoints
 ├── jobs/                  # Python Flink jobs
-│   ├── schema.py          # Định nghĩa schema cho các sự kiện
-│   ├── streaming_functions.py  # Hàm xử lý streaming
-│   └── stream_all_events.py   # Job chính
-├── secrets/               # Thư mục chứa credentials
+│   ├── schema.py          # Event schema definitions
+│   ├── streaming_functions.py  # Streaming processing functions
+│   └── stream_all_events.py   # Main job
+├── secrets/               # Directory containing credentials
 │   └── cred.json         # GCP Service Account key
-├── Dockerfile.jobs        # Dockerfile cho Flink jobs
-├── docker-compose.yml     # Cấu hình Docker Compose
-├── run_jobs.sh           # Script chạy jobs
-├── run_local.sh          # Script chạy trực tiếp (không dùng Docker)
-├── check_setup.sh        # Script kiểm tra cài đặt
-└── README.md             # File này
+├── Dockerfile.jobs        # Dockerfile for Flink jobs
+├── docker-compose.yml     # Docker Compose configuration
+├── run_jobs.sh           # Script to run jobs
+├── run_local.sh          # Script to run directly (without Docker)
+├── check_setup.sh        # Script to check installation
+└── README.md             # This file
 ```
 
-## Tiền điều kiện
+## Prerequisites
 
-1. **Docker & Docker Compose**: Cần cài đặt trên VM
+1. **Docker & Docker Compose**: Must be installed on VM
    ```bash
    sudo apt update
    sudo apt install -y docker.io docker-compose
    sudo usermod -aG docker $USER
    ```
 
-2. **GCP Credentials**: Cần file Service Account JSON để kết nối tới GCS
+2. **GCP Credentials**: Need Service Account JSON file to connect to GCS
    ```bash
-   # Tạo thư mục secrets
+   # Create secrets directory
    mkdir -p secrets
    
-   # Copy file credentials vào thư mục secrets
-   # Đặt tên file là cred.json
+   # Copy credentials file to secrets directory
+   # Name the file cred.json
    cp /path/to/service-account-key.json secrets/cred.json
    ```
 
-3. **Kết nối mạng**: VM cần kết nối được đến Kafka VM
+3. **Network Connection**: VM must be able to connect to Kafka VM
    ```bash
-   # Kiểm tra kết nối
+   # Check connection
    nc -z -v kafka-vm 9092
    ```
 
-## Các bước triển khai
+## Deployment Steps
 
 1. **Clone repository**:
    ```bash
@@ -56,85 +56,85 @@ flink/
    cd Rhythmic-ETL
    ```
 
-2. **Thiết lập thư mục và phân quyền**:
+2. **Setup directories and permissions**:
    ```bash
    cd flink
    mkdir -p data/checkpoints secrets
    chmod +x *.sh
    ```
 
-3. **Copy credentials GCP**:
+3. **Copy GCP credentials**:
    ```bash
-   # Copy file credentials vào thư mục secrets
+   # Copy credentials file to secrets directory
    cp /path/to/service-account-key.json secrets/cred.json
    ```
 
-4. **Build và khởi động containers**:
+4. **Build and start containers**:
    ```bash
    docker-compose up -d --build
    ```
 
-5. **Kiểm tra cài đặt**:
+5. **Check installation**:
    ```bash
    ./check_setup.sh
    ```
    
-6. **Chạy Flink jobs**:
+6. **Run Flink jobs**:
    ```bash
    ./run_jobs.sh
    ```
 
-## Xử lý sự cố
+## Troubleshooting
 
-### 1. Lỗi kết nối Kafka
+### 1. Kafka Connection Error
 
-Nếu không thể kết nối đến Kafka:
-
-```
-CẢNH BÁO: Không thể kết nối đến Kafka ở kafka-vm:9092
-```
-
-**Giải pháp**:
-- Kiểm tra Kafka VM đã chạy chưa: `ssh kafka-vm "docker-compose ps"`
-- Kiểm tra cấu hình mạng: `ping kafka-vm`
-- Kiểm tra firewall: `sudo ufw status`
-
-### 2. Lỗi credentials GCP
-
-Nếu không tìm thấy credentials:
+If unable to connect to Kafka:
 
 ```
-GOOGLE_APPLICATION_CREDENTIALS không tồn tại
+WARNING: Cannot connect to Kafka at kafka-vm:9092
 ```
 
-**Giải pháp**:
-- Copy file credentials vào đúng vị trí: `cp /path/to/service-account-key.json secrets/cred.json`
-- Hoặc thiết lập biến môi trường trước khi chạy:
+**Solution**:
+- Check if Kafka VM is running: `ssh kafka-vm "docker-compose ps"`
+- Check network configuration: `ping kafka-vm`
+- Check firewall: `sudo ufw status`
+
+### 2. GCP Credentials Error
+
+If credentials not found:
+
+```
+GOOGLE_APPLICATION_CREDENTIALS does not exist
+```
+
+**Solution**:
+- Copy credentials file to correct location: `cp /path/to/service-account-key.json secrets/cred.json`
+- Or set environment variable before running:
   ```bash
   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
   ./run_jobs.sh
   ```
 
-### 3. Lỗi Python
+### 3. Python Error
 
-Nếu gặp lỗi `No module named...`:
+If encountering `No module named...`:
 
-**Giải pháp**:
-- Kiểm tra Docker container đã được build đúng chưa: `docker-compose build --no-cache`
-- Kiểm tra thư viện: `docker-compose exec jobmanager pip list`
+**Solution**:
+- Check if Docker container was built correctly: `docker-compose build --no-cache`
+- Check libraries: `docker-compose exec jobmanager pip list`
 
-## Giám sát
+## Monitoring
 
-- **Web UI**: Truy cập http://flink-vm:8081 để xem Flink Web UI
+- **Web UI**: Access http://flink-vm:8081 to view Flink Web UI
 - **Logs**: `docker-compose logs jobmanager`
-- **Trạng thái job**: `docker-compose exec jobmanager flink list`
+- **Job Status**: `docker-compose exec jobmanager flink list`
 
-## Dọn dẹp
+## Cleanup
 
 ```bash
-# Dừng các container
+# Stop containers
 docker-compose down
 
-# Xóa dữ liệu (nếu cần)
+# Delete data (if needed)
 rm -rf data/* secrets/*
 ``` 
