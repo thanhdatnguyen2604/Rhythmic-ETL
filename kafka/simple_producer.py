@@ -18,10 +18,13 @@ import h5py
 KAFKA_BROKER = os.environ.get("KAFKA_BROKER", "localhost:9092")
 TOPICS = {
     "listen_events": "listen_events",
-    "page_view_events": "page_view_events"
+    "page_view_events": "page_view_events",
+    "auth_events": "auth_events"
 }
 USERS = int(os.environ.get("USERS", "100"))
 PAGES = ["home", "search", "artist", "song", "playlist", "profile"]
+AUTH_STATUSES = ["success", "fail"]
+AUTH_LEVELS = ["free", "premium", "family"]
 INTERVAL_SEC = float(os.environ.get("INTERVAL_SEC", "0.5"))  # Send event every 0.5 seconds
 H5_DATA_PATH = os.environ.get("H5_DATA_PATH", "/data/MillionSongSubset")
 
@@ -120,6 +123,33 @@ def generate_page_view_event(song_data=None):
     
     return event
 
+def generate_auth_event():
+    """Generate a random authentication event"""
+    user_id = random.randint(1, USERS)
+    event_time = datetime.now().isoformat()
+    status = random.choice(AUTH_STATUSES)
+    
+    event = {
+        "event_id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "event_time": event_time,
+        "auth_status": status,
+        "ip_address": f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}",
+        "device": random.choice(["mobile", "desktop", "tablet"]),
+        "session_id": f"session_{user_id}_{int(time.time())}",
+        "user_agent": "Mozilla/5.0 (compatible; SimpleProducer/1.0)"
+    }
+    
+    # Add more details if auth successful
+    if status == "success":
+        event["auth_level"] = random.choice(AUTH_LEVELS)
+        event["auth_token"] = f"token_{user_id}_{int(time.time())}"
+        event["login_method"] = random.choice(["email", "google", "facebook", "apple"])
+    else:
+        event["failure_reason"] = random.choice(["invalid_credentials", "account_locked", "expired_subscription"])
+    
+    return event
+
 def main():
     """Main function to run the producer"""
     try:
@@ -153,16 +183,23 @@ def main():
             # Get a random song
             song_data = random.choice(songs_data)
             
-            # Generate and send a listen event
-            if counter % 3 == 0:  # 2:1 ratio listen:pageview
+            # Generate and send a listen event (40% probability)
+            if counter % 5 < 2:
                 listen_event = generate_listen_event(song_data)
                 producer.send(TOPICS["listen_events"], value=listen_event)
                 print(f"Sent listen event: {listen_event['event_id']} - {song_data['title']} by {song_data['artist_name']}")
             
-            # Generate and send a page view event
-            page_view_event = generate_page_view_event(song_data)
-            producer.send(TOPICS["page_view_events"], value=page_view_event)
-            print(f"Sent page view event: {page_view_event['event_id']} - Page: {page_view_event['page']}")
+            # Generate and send a page view event (40% probability)
+            if counter % 5 >= 2 and counter % 5 < 4:
+                page_view_event = generate_page_view_event(song_data)
+                producer.send(TOPICS["page_view_events"], value=page_view_event)
+                print(f"Sent page view event: {page_view_event['event_id']} - Page: {page_view_event['page']}")
+            
+            # Generate and send an auth event (20% probability)
+            if counter % 5 == 4:
+                auth_event = generate_auth_event()
+                producer.send(TOPICS["auth_events"], value=auth_event)
+                print(f"Sent auth event: {auth_event['event_id']} - Status: {auth_event['auth_status']}")
             
             counter += 1
             time.sleep(INTERVAL_SEC)

@@ -19,7 +19,7 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: ${KAFKA_HOST:-kafka-vm}
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "listen_events:1:1,page_view_events:1:1"
+      KAFKA_CREATE_TOPICS: "listen_events:1:1,page_view_events:1:1,auth_events:1:1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data/kafka:/kafka/kafka-logs

@@ -12,6 +12,10 @@
         "page_view_events": {
             "name": "page_view_events",
             "partitions": 1
+        },
+        "auth_events": {
+            "name": "auth_events",
+            "partitions": 1
         }
     }
 } 

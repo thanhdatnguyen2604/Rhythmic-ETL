@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 
 networks:
   flink-network:
@@ -6,9 +6,9 @@ networks:
 
 services:
   jobmanager:
-    build:
-      context: .
-      dockerfile: Dockerfile.jobs
+    image: flink:1.17.0
+    hostname: jobmanager
+    container_name: jobmanager
     ports:
       - "8081:8081"
     command: jobmanager
@@ -16,14 +16,21 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
+        jobmanager.memory.process.size: 1024m
+        parallelism.default: 1
         state.backend: filesystem
         state.checkpoints.dir: file:///opt/flink/checkpoints
-      - KAFKA_BROKER=kafka-vm:9092
-      - GCS_BUCKET=rhythmic-bucket
+        execution.checkpointing.interval: 60000
+        execution.checkpointing.mode: EXACTLY_ONCE
+        execution.checkpointing.timeout: 30000
+        restart-strategy: fixed-delay
+        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.delay: 10000
     volumes:
-      - ./data/checkpoints:/opt/flink/checkpoints
+      - ./checkpoints:/opt/flink/checkpoints
+      - ./jobs:/opt/flink/jobs
+      - ./config:/opt/flink/config
       - ./secrets:/opt/flink/secrets
-      - ./scripts:/opt/flink/scripts
     networks:
       - flink-network
     restart: unless-stopped
@@ -34,9 +41,9 @@ services:
       retries: 3
 
   taskmanager:
-    build:
-      context: .
-      dockerfile: Dockerfile.jobs
+    image: flink:1.17.0
+    hostname: taskmanager
+    container_name: taskmanager
     depends_on:
       - jobmanager
     command: taskmanager
@@ -44,14 +51,43 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
+        taskmanager.memory.process.size: 1536m
+        taskmanager.memory.managed.size: 512m
         taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 1
         state.backend: filesystem
         state.checkpoints.dir: file:///opt/flink/checkpoints
-      - KAFKA_BROKER=kafka-vm:9092
-      - GCS_BUCKET=rhythmic-bucket
     volumes:
-      - ./data/checkpoints:/opt/flink/checkpoints
+      - ./checkpoints:/opt/flink/checkpoints
+      - ./jobs:/opt/flink/jobs
+      - ./config:/opt/flink/config
       - ./secrets:/opt/flink/secrets
     networks:
       - flink-network
-    restart: unless-stopped 
+    restart: unless-stopped
+
+  jobs-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.jobs
+    container_name: jobs-builder
+    depends_on:
+      - jobmanager
+      - taskmanager
+    volumes:
+      - ./jobs:/opt/flink/jobs
+      - ./config:/opt/flink/config
+      - ./secrets:/opt/flink/secrets
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/flink/secrets/cred.json
+      - KAFKA_BROKER=kafka-vm:9092
+      - GCS_BUCKET=rhythmic-bucket
+      - CHECKPOINT_DIR=file:///opt/flink/checkpoints
+      - CHECKPOINT_INTERVAL=60000
+      - PARALLELISM=1
+    networks:
+      - flink-network
+
+networks:
+  flink-network:
+    driver: bridge 
