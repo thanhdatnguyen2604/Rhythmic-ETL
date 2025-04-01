@@ -1,6 +1,6 @@
-# Flink Jobs Setup
+# Flink ETL Jobs
 
-Thư mục này chứa cấu hình và script để chạy Flink jobs trên flink-vm.
+Thư mục này chứa các Flink jobs để xử lý dữ liệu streaming từ Kafka và lưu vào Google Cloud Storage (GCS).
 
 ## Cấu trúc thư mục
 
@@ -10,82 +10,131 @@ flink/
 ├── data/                   # Dữ liệu Flink
 │   └── checkpoints/       # Checkpoints
 ├── jobs/                  # Python Flink jobs
-│   ├── schema.py
-│   ├── streaming_functions.py
-│   └── stream_all_events.py
+│   ├── schema.py          # Định nghĩa schema cho các sự kiện
+│   ├── streaming_functions.py  # Hàm xử lý streaming
+│   └── stream_all_events.py   # Job chính
+├── secrets/               # Thư mục chứa credentials
+│   └── cred.json         # GCP Service Account key
 ├── Dockerfile.jobs        # Dockerfile cho Flink jobs
 ├── docker-compose.yml     # Cấu hình Docker Compose
-└── run_jobs.sh           # Script chạy jobs
+├── run_jobs.sh           # Script chạy jobs
+├── run_local.sh          # Script chạy trực tiếp (không dùng Docker)
+├── check_setup.sh        # Script kiểm tra cài đặt
+└── README.md             # File này
 ```
 
-## Các bước triển khai trên flink-vm
+## Tiền điều kiện
 
-1. Clone repository và di chuyển vào thư mục flink:
+1. **Docker & Docker Compose**: Cần cài đặt trên VM
+   ```bash
+   sudo apt update
+   sudo apt install -y docker.io docker-compose
+   sudo usermod -aG docker $USER
+   ```
+
+2. **GCP Credentials**: Cần file Service Account JSON để kết nối tới GCS
+   ```bash
+   # Tạo thư mục secrets
+   mkdir -p secrets
+   
+   # Copy file credentials vào thư mục secrets
+   # Đặt tên file là cred.json
+   cp /path/to/service-account-key.json secrets/cred.json
+   ```
+
+3. **Kết nối mạng**: VM cần kết nối được đến Kafka VM
+   ```bash
+   # Kiểm tra kết nối
+   nc -z -v kafka-vm 9092
+   ```
+
+## Các bước triển khai
+
+1. **Clone repository**:
    ```bash
    git clone <repository_url>
+   cd Rhythmic-ETL
+   ```
+
+2. **Thiết lập thư mục và phân quyền**:
+   ```bash
    cd flink
+   mkdir -p data/checkpoints secrets
+   chmod +x *.sh
    ```
 
-2. Tạo thư mục cho checkpoints:
+3. **Copy credentials GCP**:
    ```bash
-   mkdir -p data/checkpoints
+   # Copy file credentials vào thư mục secrets
+   cp /path/to/service-account-key.json secrets/cred.json
    ```
 
-3. Cấp quyền thực thi cho script:
-   ```bash
-   chmod +x run_jobs.sh
-   ```
-
-4. Build và khởi động các container:
+4. **Build và khởi động containers**:
    ```bash
    docker-compose up -d --build
    ```
 
-5. Kiểm tra trạng thái:
+5. **Kiểm tra cài đặt**:
    ```bash
-   docker-compose ps
+   ./check_setup.sh
    ```
-
-6. Truy cập Flink Web UI:
-   - Mở trình duyệt và truy cập: http://localhost:8081
-
-7. Chạy Flink jobs:
+   
+6. **Chạy Flink jobs**:
    ```bash
    ./run_jobs.sh
    ```
 
-## Kiểm tra hoạt động
+## Xử lý sự cố
 
-1. Xem logs của job manager:
-   ```bash
-   docker-compose logs jobmanager
-   ```
+### 1. Lỗi kết nối Kafka
 
-2. Xem logs của task manager:
-   ```bash
-   docker-compose logs taskmanager
-   ```
+Nếu không thể kết nối đến Kafka:
 
-3. Kiểm tra trạng thái jobs:
-   ```bash
-   docker-compose exec jobmanager flink list
-   ```
+```
+CẢNH BÁO: Không thể kết nối đến Kafka ở kafka-vm:9092
+```
 
-## Dừng và xóa
+**Giải pháp**:
+- Kiểm tra Kafka VM đã chạy chưa: `ssh kafka-vm "docker-compose ps"`
+- Kiểm tra cấu hình mạng: `ping kafka-vm`
+- Kiểm tra firewall: `sudo ufw status`
 
-1. Dừng các container:
-   ```bash
-   docker-compose down
-   ```
+### 2. Lỗi credentials GCP
 
-2. Xóa dữ liệu (nếu cần):
-   ```bash
-   rm -rf data/checkpoints/*
-   ```
+Nếu không tìm thấy credentials:
 
-## Lưu ý quan trọng
+```
+GOOGLE_APPLICATION_CREDENTIALS không tồn tại
+```
 
-- **Python Environment**: Đã được cấu hình sẵn trong Dockerfile.jobs
-- **Memory**: Các container cần ít nhất 2GB RAM để hoạt động tốt
-- **Checkpoints**: Được lưu trong thư mục data/checkpoints
-- **Web UI**: Có thể truy cập qua port 8081 
+**Giải pháp**:
+- Copy file credentials vào đúng vị trí: `cp /path/to/service-account-key.json secrets/cred.json`
+- Hoặc thiết lập biến môi trường trước khi chạy:
+  ```bash
+  export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+  ./run_jobs.sh
+  ```
+
+### 3. Lỗi Python
+
+Nếu gặp lỗi `No module named...`:
+
+**Giải pháp**:
+- Kiểm tra Docker container đã được build đúng chưa: `docker-compose build --no-cache`
+- Kiểm tra thư viện: `docker-compose exec jobmanager pip list`
+
+## Giám sát
+
+- **Web UI**: Truy cập http://flink-vm:8081 để xem Flink Web UI
+- **Logs**: `docker-compose logs jobmanager`
+- **Trạng thái job**: `docker-compose exec jobmanager flink list`
+
+## Dọn dẹp
+
+```bash
+# Dừng các container
+docker-compose down
+
+# Xóa dữ liệu (nếu cần)
+rm -rf data/* secrets/*
+``` 

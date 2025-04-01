@@ -1,5 +1,11 @@
 version: '3'
 
+networks:
+  flink-network:
+    driver: bridge
+  kafka-network:
+    external: true
+
 services:
   jobmanager:
     build:
@@ -13,11 +19,22 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
         state.backend: filesystem
-        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+      - KAFKA_BROKER=kafka-vm:9092
+      - GCS_BUCKET=rhythmic-bucket
     volumes:
-      - ./data/checkpoints:/tmp/flink-checkpoints
+      - ./data/checkpoints:/opt/flink/checkpoints
+      - ./secrets:/opt/flink/secrets
+      - ./scripts:/opt/flink/scripts
     networks:
       - flink-network
+      - kafka-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   taskmanager:
     build:
@@ -32,12 +49,13 @@ services:
         jobmanager.rpc.address: jobmanager
         taskmanager.numberOfTaskSlots: 2
         state.backend: filesystem
-        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+      - KAFKA_BROKER=kafka-vm:9092
+      - GCS_BUCKET=rhythmic-bucket
     volumes:
-      - ./data/checkpoints:/tmp/flink-checkpoints
+      - ./data/checkpoints:/opt/flink/checkpoints
+      - ./secrets:/opt/flink/secrets
     networks:
       - flink-network
-
-networks:
-  flink-network:
-    driver: bridge 
+      - kafka-network
+    restart: unless-stopped 

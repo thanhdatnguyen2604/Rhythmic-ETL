@@ -1,435 +1,254 @@
-# Luồng ETL và Hướng dẫn triển khai Rhythmic-ETL
-
-## Tổng quan luồng ETL
-
-Luồng ETL (Extract-Transform-Load) của dự án Rhythmic-ETL xử lý dữ liệu streaming từ nguồn đến đích với mô hình lambda architecture (kết hợp xử lý batch và streaming).
-
-![Luồng ETL](https://i.imgur.com/XYZabc.png)
-
-### Các bước chính trong luồng ETL:
-
-1. **Extract (Trích xuất)**: 
-   - Eventsim tạo dữ liệu mô phỏng các sự kiện nghe nhạc
-   - Dữ liệu được đưa vào Kafka dưới dạng JSON
-   - Ba loại sự kiện chính: listen_events, page_view_events, auth_events
-
-2. **Transform (Biến đổi)**:
-   - **Stream Processing**: Flink đọc dữ liệu từ Kafka, biến đổi và lưu vào GCS
-   - **Batch Processing**: dbt thực hiện các biến đổi trên BigQuery
-   - **Data Modeling**: Xây dựng mô hình dimensional (star schema) với dim và fact tables
-
-3. **Load (Tải)**:
-   - Dữ liệu sau khi xử lý được lưu vào GCS dưới dạng parquet
-   - Airflow tạo external tables trong BigQuery từ dữ liệu GCS
-   - dbt transforms tạo ra các bảng phân tích cuối cùng trong BigQuery
-
-## Hướng dẫn triển khai từng bước
-
-Dưới đây là các bước để triển khai toàn bộ dự án Rhythmic-ETL, tận dụng tối đa tín dụng miễn phí $300 của GCP.
-
-### Bước 1: Thiết lập GCP Project
-
-1. Tạo GCP project mới:
-   - Truy cập [Google Cloud Console](https://console.cloud.google.com/)
-   - Tạo project mới (VD: rhythmic-etl-project)
-   - Bật tính năng thanh toán và liên kết với tín dụng $300
-
-2. Bật các API cần thiết:
-   ```bash
-   gcloud services enable compute.googleapis.com
-   gcloud services enable storage.googleapis.com
-   gcloud services enable bigquery.googleapis.com
-   ```
-
-3. Tạo Service Account:
-   - Vào IAM & Admin > Service Accounts
-   - Tạo service account với quyền:
-     - Compute Admin
-     - Storage Admin
-     - BigQuery Admin
-   - Tải xuống key JSON và lưu tại vị trí an toàn
-
-### Bước 2: Chuẩn bị môi trường phát triển
-
-1. Cài đặt công cụ cần thiết:
-   ```bash
-   # Google Cloud SDK
-   curl https://sdk.cloud.google.com | bash
-   gcloud init
-
-   # Terraform
-   # Cài đặt theo hướng dẫn tại: https://learn.hashicorp.com/tutorials/terraform/install-cli
-
-   # Các công cụ khác
-   pip install apache-airflow dbt-bigquery
-   ```
-
-2. Clone repository:
-   ```bash
-   git clone https://github.com/your-username/Rhythmic-ETL.git
-   cd Rhythmic-ETL
-   ```
-
-3. Thiết lập biến môi trường:
-   ```bash
-   export GOOGLE_APPLICATION_CREDENTIALS="path/to/your/service-account-key.json"
-   export TF_VAR_project_id="rhythmic-etl-project"
-   ```
-
-### Bước 3: Triển khai hạ tầng với Terraform
-
-1. Khởi tạo Terraform:
-   ```bash
-   cd terraform
-   terraform init
-   ```
-
-2. Tạo file terraform.tfvars với nội dung:
-   ```
-   project_id          = "rhythmic-etl-project"
-   region              = "us-central1"
-   zone                = "us-central1-a"
-   gcs_bucket_name     = "rhythmic-bucket"
-   bq_dataset_name     = "rhythmic_dataset"
-   ssh_username        = "your-username"
-   ssh_public_key_path = "~/.ssh/id_rsa.pub"
-   ```
-
-3. Triển khai hạ tầng:
-   ```bash
-   terraform plan
-   terraform apply
-   ```
-
-4. Ghi lại thông tin đầu ra (IP, tên bucket):
-   ```bash
-   terraform output
-   ```
-
-### Bước 4: Thiết lập SSH và kết nối VMs
-
-1. Tạo SSH key nếu chưa có:
-   ```bash
-   ssh-keygen -t rsa -b 4096
-   ```
-
-2. Cấu hình SSH trong file `~/.ssh/config`:
-   ```bash
-   # Lấy IP của các VM từ Terraform output
-   cd terraform
-   terraform output
-   
-   # Cấu hình SSH (thêm vào ~/.ssh/config)
-   Host kafka-vm
-     HostName $(terraform output -raw kafka_vm_external_ip)
-     User rhythmic
-     Port 22
-     IdentityFile ~/.ssh/id_rsa
-     ServerAliveInterval 60
-     ServerAliveCountMax 3
-
-   Host flink-vm
-     HostName $(terraform output -raw flink_vm_external_ip)
-     User rhythmic
-     Port 22
-     IdentityFile ~/.ssh/id_rsa
-     ServerAliveInterval 60
-     ServerAliveCountMax 3
-
-   Host airflow-vm
-     HostName $(terraform output -raw airflow_vm_external_ip)
-     User rhythmic
-     Port 22
-     IdentityFile ~/.ssh/id_rsa
-     ServerAliveInterval 60
-     ServerAliveCountMax 3
-   ```
-
-3. Kiểm tra kết nối:
-   ```bash
-   # Kiểm tra kết nối đến từng VM
-   ssh -v kafka-vm
-   ssh -v flink-vm
-   ssh -v airflow-vm
-   ```
-
-   Nếu gặp lỗi "Connection timed out", hãy kiểm tra:
-   1. Firewall rules trong GCP:
-      ```bash
-      # Tạo firewall rule cho SSH
-      gcloud compute firewall-rules create allow-ssh \
-          --direction=INGRESS \
-          --priority=1000 \
-          --network=default \
-          --action=ALLOW \
-          --rules=tcp:22 \
-          --source-ranges=0.0.0.0/0 \
-          --target-tags=kafka,flink,airflow
-      ```
-   
-   2. Tags của VM:
-      ```bash
-      # Kiểm tra tags của VM
-      gcloud compute instances describe kafka-vm --zone=us-central1-a --format="get(tags.items)"
-      ```
-   
-   3. IP của VM:
-      ```bash
-      # Kiểm tra IP của VM
-      gcloud compute instances describe kafka-vm --zone=us-central1-a --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
-      ```
-
-### Bước 5: Thiết lập Kafka và Eventsim
-
-1. SSH vào Kafka VM:
-   ```bash
-   ssh kafka-vm
-   ```
-
-2. Cài đặt Docker và Git:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install -y docker.io docker-compose git
-   sudo usermod -aG docker $USER
-   # Đăng xuất và đăng nhập lại
-   ```
-
-3. Clone repository:
-   ```bash
-   git clone https://github.com/your-username/Rhythmic-ETL.git
-   cd Rhythmic-ETL
-   ```
-
-4. Thiết lập và khởi động Kafka:
-   ```bash
-   cd kafka
-   mkdir -p data config
-   
-   # Tạo file config/server.properties từ tài liệu
-   vi config/server.properties
-   # Sao chép nội dung từ docs/kafka_optimization.md
-
-   # Khởi động Kafka
-   docker-compose up -d
-   ```
-
-5. Cài đặt và khởi động Eventsim:
-   ```bash
-   cd ../eventsim
-   # Cấu hình Eventsim để sử dụng Million Song Dataset Subset
-   vi docker-compose.yml
-   
-   # Khởi động Eventsim
-   docker-compose up -d
-   ```
-
-### Bước 6: Thiết lập Flink và Jobs
-
-1. SSH vào Flink VM:
-   ```bash
-   ssh flink-vm
-   ```
-
-2. Cài đặt Docker và Git:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install -y docker.io docker-compose git
-   sudo usermod -aG docker $USER
-   # Đăng xuất và đăng nhập lại
-   ```
-
-3. Clone repository:
-   ```bash
-   git clone https://github.com/your-username/Rhythmic-ETL.git
-   cd Rhythmic-ETL
-   ```
-
-4. Thiết lập và khởi động Flink:
-   ```bash
-   cd flink
-   mkdir -p data config
-   
-   # Tạo file config/flink-conf.yaml từ tài liệu
-   vi config/flink-conf.yaml
-   # Sao chép nội dung từ docs/flink_optimization.md
-
-   # Khởi động Flink
-   docker-compose up -d
-   ```
-
-5. Chuẩn bị và chạy Flink Jobs:
-   ```bash
-   # Cài đặt Python và dependencies
-   sudo apt-get install -y python3-pip
-   pip3 install pyflink kafka-python google-cloud-storage
-
-   # Thiết lập biến môi trường
-   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
-   export KAFKA_BROKER="kafka-vm:9092"
-   export GCS_BUCKET="rhythmic-bucket"
-
-   # Chuyển đổi mã nguồn từ Flink sang Flink
-   cd ../flink_jobs
-   
-   # Chạy Flink job
-   flink run -py stream_all_events.py
-   ```
-
-### Bước 7: Thiết lập Airflow
-
-1. SSH vào Airflow VM:
-   ```bash
-   ssh airflow-vm
-   ```
-
-2. Cài đặt Docker và Git:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install -y docker.io docker-compose git
-   sudo usermod -aG docker $USER
-   # Đăng xuất và đăng nhập lại
-   ```
-
-3. Clone repository:
-   ```bash
-   git clone https://github.com/your-username/Rhythmic-ETL.git
-   cd Rhythmic-ETL
-   ```
-
-4. Thiết lập và khởi động Airflow:
-   ```bash
-   cd airflow
-   mkdir -p logs plugins dags config
-   
-   # Tạo file config/airflow.cfg từ tài liệu
-   vi config/airflow.cfg
-   # Sao chép nội dung từ docs/airflow_optimization.md
-
-   # Thiết lập biến môi trường
-   echo "AIRFLOW_UID=$(id -u)" > .env
-   
-   # Khởi động Airflow
-   docker-compose up -d
-   ```
-
-5. Tạo các DAG:
-   ```bash
-   cd dags
-   
-   # Tạo DAG cho GCS to BigQuery
-   vi gcs_to_bigquery.py
-   
-   # Tạo DAG để trigger dbt
-   vi trigger_dbt.py
-   ```
-
-### Bước 8: Thiết lập dbt
-
-1. Vẫn trên Airflow VM:
-   ```bash
-   cd ~/Rhythmic-ETL
-   mkdir -p dbt
-   cd dbt
-   ```
-
-2. Khởi tạo dbt project:
-   ```bash
-   dbt init rhythmic_dbt
-   cd rhythmic_dbt
-   ```
-
-3. Cấu hình kết nối đến BigQuery trong `~/.dbt/profiles.yml`:
-   ```yaml
-   rhythmic_dbt:
-     target: dev
-     outputs:
-       dev:
-         type: bigquery
-         method: service-account
-         project: rhythmic-etl-project
-         dataset: rhythmic_dataset
-         keyfile: /path/to/service-account-key.json
-         threads: 1
-         timeout_seconds: 300
-   ```
-
-4. Tạo các model dbt:
-   ```bash
-   mkdir -p models/staging models/marts
-   
-   # Tạo models staging
-   vi models/staging/stg_listen_events.sql
-   vi models/staging/stg_page_view_events.sql
-   vi models/staging/stg_auth_events.sql
-   
-   # Tạo models marts
-   vi models/marts/dim_users.sql
-   vi models/marts/dim_songs.sql
-   vi models/marts/fact_listens.sql
-   
-   # Định nghĩa schema
-   vi models/schema.yml
-   ```
-
-5. Chạy dbt để kiểm tra:
-   ```bash
-   dbt debug
-   dbt run
-   ```
-
-### Bước 9: Theo dõi và quản lý chi phí
-
-1. Thiết lập cảnh báo ngân sách:
-   ```bash
-   cd ~/Rhythmic-ETL/scripts
-   chmod +x budget_alert.sh
-   ./budget_alert.sh rhythmic-etl-project 10 your-email@example.com
-   ```
-
-2. Tạo lịch tắt VM tự động khi không sử dụng:
-   ```bash
-   chmod +x vm_control.sh
-   
-   # Thêm vào crontab để tắt VM lúc 7 giờ tối và bật lúc 8 giờ sáng
-   crontab -e
-   
-   # Thêm các dòng sau:
-   0 19 * * * /home/your-username/Rhythmic-ETL/scripts/vm_control.sh rhythmic-etl-project us-central1-a stop
-   0 8 * * * /home/your-username/Rhythmic-ETL/scripts/vm_control.sh rhythmic-etl-project us-central1-a start
-   ```
-
-### Bước 10: Kiểm tra toàn bộ hệ thống
-
-1. Kiểm tra Kafka:
-   ```bash
-   ssh kafka-vm
-   cd Rhythmic-ETL/kafka
-   docker-compose ps
-   
-   # Xem các messages đang được tạo
-   docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic listen_events --from-beginning --max-messages 5
-   ```
-
-2. Kiểm tra Flink:
-   ```bash
-   ssh flink-vm
-   cd Rhythmic-ETL/flink
-   docker-compose ps
-   
-   # Truy cập Flink Dashboard
-   # Mở trình duyệt và truy cập: http://[FLINK_VM_IP]:8081
-   ```
-
-3. Kiểm tra Airflow:
-   ```bash
-   ssh airflow-vm
-   cd Rhythmic-ETL/airflow
-   docker-compose ps
-   
-   # Truy cập Airflow UI
-   # Mở trình duyệt và truy cập: http://[AIRFLOW_VM_IP]:8080
-   ```
-
-4. Kiểm tra dữ liệu trong BigQuery:
-   - Truy cập [BigQuery Console](https://console.cloud.google.com/bigquery)
-   - Truy vấn dữ liệu từ các bảng đã tạo
+# Hướng dẫn ETL Rhythmic
+
+Tài liệu này mô tả chi tiết quy trình ETL (Extract, Transform, Load) trong dự án Rhythmic-ETL, từ việc thu thập dữ liệu đến xử lý và lưu trữ.
+
+## Tổng quan kiến trúc
+
+Hệ thống ETL của Rhythmic bao gồm các thành phần chính:
+
+1. **Kafka**: Nhận dữ liệu streaming từ Eventsim và các nguồn khác
+2. **Flink**: Xử lý dữ liệu streaming theo thời gian thực
+3. **GCS (Google Cloud Storage)**: Lưu trữ dữ liệu đã xử lý
+4. **Airflow**: Điều phối các tác vụ xử lý dữ liệu theo lịch trình
+
+## Cài đặt hệ thống
+
+### Chuẩn bị môi trường
+
+Dự án chạy trên 3 máy ảo riêng biệt trên GCP:
+
+1. **kafka-vm**: Chứa Kafka và Eventsim
+2. **flink-vm**: Chứa Flink để xử lý dữ liệu streaming
+3. **airflow-vm**: Chứa Airflow để điều phối các tác vụ
+
+### Setup VMs
+
+Trên mỗi VM, cần thực hiện các bước cài đặt cơ bản:
+
+```bash
+# Cài đặt Git, Docker và các công cụ cần thiết
+sudo apt-get update
+sudo apt-get install -y git docker.io docker-compose jq netcat
+sudo usermod -aG docker $USER
+
+# Khởi động lại shell hoặc logout/login để áp dụng quyền Docker
+newgrp docker
+
+# Clone repository
+git clone <repository_url>
+cd Rhythmic-ETL
+```
+
+### 1. Setup kafka-vm
+
+```bash
+# Di chuyển đến thư mục kafka
+cd kafka
+
+# Cấp quyền thực thi
+chmod +x prepare_data.sh
+
+# Chuẩn bị dữ liệu (tải Million Song Dataset)
+./prepare_data.sh
+
+# Khởi động các dịch vụ
+docker-compose up -d
+```
+
+Sau khi chạy, kiểm tra trạng thái:
+
+```bash
+# Xem các container
+docker-compose ps
+
+# Kiểm tra logs
+docker-compose logs
+```
+
+### 2. Setup flink-vm
+
+Trước khi chạy, cần chuẩn bị credentials GCP:
+
+```bash
+# Di chuyển đến thư mục flink
+cd flink
+
+# Tạo thư mục secrets
+mkdir -p secrets
+
+# Copy GCP credentials
+# Lưu ý: credentials cần có quyền Storage Admin
+cp /path/to/credentials.json secrets/cred.json
+
+# Cấp quyền thực thi
+chmod +x *.sh
+
+# Kiểm tra cài đặt
+./check_setup.sh
+
+# Khởi động các dịch vụ
+docker-compose up -d
+
+# Chạy Flink jobs
+./run_jobs.sh
+```
+
+### 3. Setup airflow-vm
+
+```bash
+# Di chuyển đến thư mục airflow
+cd airflow
+
+# Tạo thư mục cần thiết
+mkdir -p dags logs plugins config secrets
+
+# Copy GCP credentials
+cp /path/to/credentials.json secrets/cred.json
+
+# Thiết lập quyền
+chmod -R 777 logs plugins
+
+# Khởi tạo Airflow
+docker-compose up airflow-init
+
+# Khởi động dịch vụ
+docker-compose up -d
+```
+
+Truy cập Airflow UI tại: http://airflow-vm:8080 (username: airflow, password: airflow)
+
+## Luồng dữ liệu
+
+### 1. Nguồn dữ liệu
+
+Dữ liệu được tạo ra bởi **Eventsim** - một công cụ mô phỏng sự kiện giống như dữ liệu từ ứng dụng nghe nhạc. Eventsim sử dụng Million Song Dataset làm nguồn dữ liệu về bài hát.
+
+Các loại sự kiện bao gồm:
+- **listen_events**: Sự kiện nghe nhạc
+- **page_view_events**: Sự kiện xem trang
+- **auth_events**: Sự kiện xác thực
+
+### 2. Kafka Streaming
+
+Sự kiện từ Eventsim được đưa vào Kafka theo các topics tương ứng:
+- `listen_events`
+- `page_view_events`
+- `auth_events`
+
+### 3. Flink Processing
+
+Flink đọc dữ liệu từ Kafka, xử lý và chuẩn hóa, sau đó lưu vào GCS với các partition phù hợp:
+
+```
+gs://rhythmic-bucket/listen_events/year=2023/month=04/day=01/hour=23/
+```
+
+### 4. Airflow Orchestration
+
+Airflow quản lý các tác vụ xử lý dữ liệu theo lịch trình, bao gồm:
+- **Kiểm tra dữ liệu**: Đảm bảo dữ liệu mới đã có trong GCS
+- **Xử lý batch**: Thực hiện các phân tích batch trên dữ liệu
+- **Tạo báo cáo**: Tạo các báo cáo phân tích
+
+## Kiểm tra và xử lý sự cố
+
+### Kiểm tra Kafka
+
+```bash
+# SSH vào kafka-vm
+ssh kafka-vm
+
+# Liệt kê topics
+docker-compose exec kafka kafka-topics.sh --list --bootstrap-server localhost:9092
+
+# Xem dữ liệu trong topic
+docker-compose exec kafka kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic listen_events --from-beginning --max-messages 5
+```
+
+### Kiểm tra Flink
+
+```bash
+# SSH vào flink-vm
+ssh flink-vm
+
+# Xem trạng thái jobs
+docker-compose exec jobmanager flink list
+
+# Xem logs
+docker-compose logs jobmanager
+```
+
+### Kiểm tra Airflow
+
+```bash
+# SSH vào airflow-vm
+ssh airflow-vm
+
+# Xem logs
+docker-compose logs webserver
+
+# Xem logs của DAG cụ thể
+docker-compose exec webserver airflow dags list
+docker-compose exec webserver airflow tasks list <dag_id>
+docker-compose exec webserver airflow dags test <dag_id> <execution_date>
+```
+
+## Xử lý lỗi thường gặp
+
+### 1. Kafka không nhận được dữ liệu từ Eventsim
+
+**Kiểm tra**:
+```bash
+# Kiểm tra Eventsim có đang chạy
+docker-compose ps eventsim
+
+# Kiểm tra logs
+docker-compose logs eventsim
+```
+
+**Giải pháp**:
+- Đảm bảo container eventsim đang hoạt động
+- Kiểm tra config.json của Eventsim
+- Khởi động lại: `docker-compose restart eventsim`
+
+### 2. Flink không kết nối được với Kafka
+
+**Kiểm tra**:
+```bash
+# Kiểm tra kết nối
+nc -z -v kafka-vm 9092
+
+# Kiểm tra logs
+docker-compose logs jobmanager
+```
+
+**Giải pháp**:
+- Đảm bảo kafka-vm đang chạy và có thể truy cập được
+- Kiểm tra cấu hình mạng
+- Chỉnh sửa biến môi trường: `KAFKA_BROKER=kafka-vm:9092`
+
+### 3. Flink không lưu được dữ liệu vào GCS
+
+**Kiểm tra**:
+```bash
+# Kiểm tra credentials
+ls -la secrets/cred.json
+```
+
+**Giải pháp**:
+- Đảm bảo file credentials tồn tại và có định dạng đúng
+- Kiểm tra quyền của service account trong GCP
+- Thiết lập biến môi trường: `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json`
+
+### 4. Airflow DAGs không chạy
+
+**Kiểm tra**:
+```bash
+# Kiểm tra trạng thái DAGs
+docker-compose exec webserver airflow dags list-runs
+```
+
+**Giải pháp**:
+- Kiểm tra cú pháp của DAGs
+- Đảm bảo các connections đã được cấu hình đúng
+- Khởi động lại webserver: `docker-compose restart webserver`
