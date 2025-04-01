@@ -25,16 +25,16 @@ def save_to_gcs(data, bucket_name, object_name):
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(object_name)
         blob.upload_from_string(data)
-        logger.info(f"Đã lưu dữ liệu vào gs://{bucket_name}/{object_name}")
+        logger.info("Đã lưu dữ liệu vào gs://{}/{}".format(bucket_name, object_name))
         return True
     except Exception as e:
-        logger.error(f"Lỗi khi lưu vào GCS: {str(e)}")
+        logger.error("Lỗi khi lưu vào GCS: {}".format(str(e)))
         return False
 
 def get_partition_path(event_time, event_type):
     """Tạo đường dẫn phân vùng theo năm/tháng/ngày/giờ"""
     dt = datetime.fromtimestamp(event_time / 1000)  # Convert from milliseconds
-    return f"{event_type}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}"
+    return "{}/year={}/month={:02d}/day={:02d}/hour={:02d}".format(event_type, dt.year, dt.month, dt.day, dt.hour)
 
 def process_listen_events(row, bucket_name):
     """Xử lý sự kiện nghe nhạc và lưu vào GCS"""
@@ -57,14 +57,15 @@ def process_listen_events(row, bucket_name):
         
         # Tạo partition path và object name
         partition_path = get_partition_path(event_time, 'listen_events')
-        object_name = f"{partition_path}/{event.get('listen_id')}.json"
+        object_name = "{}/{}".format(partition_path, event.get('listen_id'))
+        object_name = "{}.json".format(object_name)
         
         # Lưu vào GCS
         save_to_gcs(json.dumps(processed_data), bucket_name, object_name)
         
         return processed_data
     except Exception as e:
-        logger.error(f"Lỗi khi xử lý listen_event: {str(e)}")
+        logger.error("Lỗi khi xử lý listen_event: {}".format(str(e)))
         return None
 
 def process_page_view_events(row, bucket_name):
@@ -90,14 +91,15 @@ def process_page_view_events(row, bucket_name):
         
         # Tạo partition path và object name
         partition_path = get_partition_path(event_time, 'page_view_events')
-        object_name = f"{partition_path}/{event.get('page_view_id')}.json"
+        object_name = "{}/{}".format(partition_path, event.get('page_view_id'))
+        object_name = "{}.json".format(object_name)
         
         # Lưu vào GCS
         save_to_gcs(json.dumps(processed_data), bucket_name, object_name)
         
         return processed_data
     except Exception as e:
-        logger.error(f"Lỗi khi xử lý page_view_event: {str(e)}")
+        logger.error("Lỗi khi xử lý page_view_event: {}".format(str(e)))
         return None
 
 def process_auth_events(row, bucket_name):
@@ -120,12 +122,13 @@ def process_auth_events(row, bucket_name):
         
         # Tạo partition path và object name
         partition_path = get_partition_path(event_time, 'auth_events')
-        object_name = f"{partition_path}/{event.get('auth_id')}.json"
+        object_name = "{}/{}".format(partition_path, event.get('auth_id'))
+        object_name = "{}.json".format(object_name)
         
         # Lưu vào GCS
         save_to_gcs(json.dumps(processed_data), bucket_name, object_name)
         
         return processed_data
     except Exception as e:
-        logger.error(f"Lỗi khi xử lý auth_event: {str(e)}")
+        logger.error("Lỗi khi xử lý auth_event: {}".format(str(e)))
         return None 

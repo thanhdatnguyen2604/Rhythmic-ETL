@@ -6,10 +6,15 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
+# Kiểm tra phiên bản Python
+RUN python3 --version
+
 # Cài đặt các thư viện Python cần thiết
-RUN pip3 install apache-flink==1.17.0 \
+RUN pip3 install --no-cache-dir \
+    apache-flink==1.17.0 \
     kafka-python \
-    apache-flink-libraries
+    apache-flink-libraries \
+    google-cloud-storage
 
 # Tạo thư mục cho jobs
 RUN mkdir -p /opt/flink/jobs

@@ -36,7 +36,7 @@ def create_kafka_source(env, topic, schema, table_name):
         .topic(topic)
         .start_from_latest()
         .property("bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
-        .property("group.id", f"rhythmic-etl-{topic}")
+        .property("group.id", "rhythmic-etl-{}".format(topic))
     ).with_format(
         Json()
         .fail_on_missing_field(False)
@@ -76,10 +76,10 @@ def main():
             schema = topic_config["schema"]
             processor = topic_config["processor"]
             
-            logger.info(f"Đang thiết lập xử lý cho topic {topic}")
+            logger.info("Đang thiết lập xử lý cho topic {}".format(topic))
             
             # Tạo Kafka source
-            source_table = create_kafka_source(env, topic, schema, f"{topic}_source")
+            source_table = create_kafka_source(env, topic, schema, "{}_source".format(topic))
             
             # Chuyển đổi Table sang DataStream
             stream = t_env.to_append_stream(
@@ -93,7 +93,7 @@ def main():
         # Thực thi job
         env.execute("Rhythmic-ETL Streaming Job")
     except Exception as e:
-        logger.error(f"Lỗi khi chạy Flink job: {str(e)}")
+        logger.error("Lỗi khi chạy Flink job: {}".format(str(e)))
         raise
 
 if __name__ == "__main__":
