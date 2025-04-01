@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Rhythmic-ETL: Định nghĩa schema cho các sự kiện
+Rhythmic-ETL: Define schemas for events
 """
 
 # Schema cho listen_events

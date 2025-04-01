@@ -80,8 +80,14 @@ services:
       - KAFKA_BROKER=${KAFKA_BROKER:-kafka-vm:9092}
       - GCS_BUCKET=${GCS_BUCKET:-rhythmic-events}
       - GOOGLE_APPLICATION_CREDENTIALS=/opt/flink/secrets/gcp-credentials.json
-    entrypoint: ["python3"]
-    command: ["-c", "print('Job builder ready. Use docker exec -it jobs-builder python3 /opt/flink/jobs/stream_all_events.py to start jobs')"]
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "echo '=============================================' &&
+               echo 'Job builder ready!' &&
+               echo 'To execute jobs, run:' &&
+               echo 'docker exec -it jobs-builder python3 /opt/flink/jobs/stream_all_events.py' &&
+               echo '=============================================' &&
+               tail -f /dev/null"
     depends_on:
       - jobmanager
       - taskmanager

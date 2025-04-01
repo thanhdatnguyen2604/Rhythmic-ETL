@@ -5,11 +5,11 @@ RUN apt-get update && \
     apt-get install -y curl wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Kiểm tra phiên bản Python
+# Check Python version
 RUN python3 --version && \
     pip3 --version
 
-# Cài đặt các thư viện Python cần thiết
+# Install required Python libraries
 RUN pip3 install --no-cache-dir \
     apache-flink \
     apache-flink-libraries \
@@ -19,7 +19,7 @@ RUN pip3 install --no-cache-dir \
     pytz \
     requests
 
-# Cấp quyền thực thi
+# Grant execute permission
 RUN mkdir -p /opt/flink/jobs
 WORKDIR /opt/flink/jobs
 
