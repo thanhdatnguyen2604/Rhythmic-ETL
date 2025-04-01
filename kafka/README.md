@@ -1,104 +1,100 @@
-# Kafka and Eventsim Setup
+# Kafka and Million Song Dataset Producer Setup
 
-This directory contains configuration and scripts to run Kafka and Eventsim on kafka-vm.
+This directory contains configuration and scripts to set up Kafka and a producer that uses the Million Song Dataset to generate music streaming events.
 
 ## Directory Structure
 
-```
-kafka/
-├── config/
-│   └── server.properties    # Kafka configuration
-├── data/                    # Data directory (created when running prepare_data.sh)
-│   ├── zookeeper/          # Zookeeper data
-│   ├── kafka/              # Kafka data
-│   └── eventsim/           # Eventsim and Million Song Dataset data
-├── Dockerfile.eventsim     # Dockerfile for Eventsim
-├── docker-compose.yml      # Docker Compose configuration
-├── prepare_data.sh         # Data preparation script
-├── requirements.txt        # Python dependencies
-└── README.md              # This documentation
-```
+- `config/` - Configuration files
+- `data/` - Data directory for Kafka, Zookeeper, and Million Song Dataset
+- `docker-compose.yml` - Docker Compose file for Kafka and Zookeeper
+- `prepare_data.sh` - Script to prepare the directory structure and download the dataset
+- `simple_producer.py` - Python script that reads HDF5 files and sends events to Kafka
 
 ## Deployment Steps on kafka-vm
 
-1. Clone repository and move to kafka directory:
+1. **Clone the repository**
    ```bash
-   git clone <repository_url>
-   cd kafka
+   git clone <repository-url>
+   cd Rhythmic-ETL/kafka
    ```
 
-2. Make scripts executable:
+2. **Prepare the environment**
    ```bash
    chmod +x prepare_data.sh
-   ```
-
-3. Run data preparation script:
-   ```bash
    ./prepare_data.sh
    ```
-   This script will:
-   - Create necessary directory structure
-   - Download Million Song Dataset (approximately 1.8GB) from official source
-   - Extract dataset to data/eventsim/MillionSongSubset directory
-   - Create configuration files for Kafka and Eventsim
-   - Set access permissions for directories
+   - This script will create necessary directories and configuration files
+   - It will download and extract the Million Song Dataset (approximately 10GB)
+   - This may take 15-30 minutes depending on your connection
 
-4. Check downloaded data:
+3. **Start Kafka and Zookeeper**
    ```bash
-   # Check dataset size
-   du -sh data/eventsim/MillionSongSubset
-   
-   # Check number of .h5 files
-   find data/eventsim/MillionSongSubset -name "*.h5" | wc -l
+   docker-compose up -d
    ```
 
-5. Build and start containers:
-   ```bash
-   docker-compose up -d --build
-   ```
-
-6. Check status:
+4. **Check the status**
    ```bash
    docker-compose ps
    ```
 
-7. View logs:
+5. **View logs**
    ```bash
-   # View logs for all services
-   docker-compose logs
-
-   # View logs for specific service
-   docker-compose logs kafka
-   docker-compose logs eventsim
+   docker-compose logs -f
    ```
+
+## Running the Producer
+
+The producer reads song data from the Million Song Dataset and generates music listening and page view events.
+
+1. **Install required Python packages**
+   ```bash
+   pip install kafka-python h5py
+   ```
+
+2. **Run the producer**
+   ```bash
+   python simple_producer.py
+   ```
+
+3. **Stop the producer**
+   Press `Ctrl+C` to stop the producer.
 
 ## Operational Checks
 
-1. Check Kafka topics:
-   ```bash
-   docker-compose exec kafka kafka-topics.sh --list --bootstrap-server localhost:9092
-   ```
+### Verify Kafka Topics
+```bash
+docker-compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
+```
 
-2. View data from Eventsim:
-   ```bash
-   docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic listen_events --from-beginning --max-messages 5
-   ```
+### Check Messages in a Topic
+```bash
+docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic listen_events --from-beginning
+```
 
 ## Stop and Cleanup
 
-1. Stop containers:
-   ```bash
-   docker-compose down
-   ```
-
-2. Delete data (if needed):
-   ```bash
-   rm -rf data/*
-   ```
+```bash
+docker-compose down
+```
 
 ## Important Notes
 
-- **Data**: Million Song Dataset will be downloaded when running `prepare_data.sh` on kafka-vm
-- **Storage**: Requires at least 4GB free space (1.8GB for dataset + 2GB for Kafka data)
-- **RAM**: Containers need at least 2GB RAM to operate properly
-- **Time**: Dataset download and extraction may take 5-10 minutes depending on network speed 
+1. **Requirements**
+   - Docker and Docker Compose
+   - Python 3.6+
+   - At least 2GB of RAM
+   - At least 10GB of disk space for the Million Song Dataset
+
+2. **Network Configuration**
+   - The Kafka broker is available at `localhost:9092` from the host
+   - From other containers/VMs, use `kafka-vm:9092` (replace with actual hostname)
+
+3. **Connection from flink-vm**
+   - Make sure network connectivity exists between flink-vm and kafka-vm
+   - Kafka port 9092 should be accessible from flink-vm
+   - Update your Flink jobs to use the correct Kafka broker address: `kafka-vm:9092`
+
+4. **About the Million Song Dataset**
+   - This project uses the Million Song Dataset to generate realistic music data
+   - The dataset contains metadata for one million songs in HDF5 format
+   - Documentation: http://millionsongdataset.com/ 
