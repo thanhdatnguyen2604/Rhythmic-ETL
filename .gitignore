@@ -223,4 +223,4 @@ terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,dbt
 
-kafka/MillionSongSubset/
+kafka/data/MillionSongSubset/
