@@ -9,6 +9,12 @@ RUN apt-get update && apt-get install -y \
 # Kiểm tra phiên bản Python
 RUN python3 --version
 
+# Tạo symbolic link từ python3 đến python
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# Đặt biến môi trường cho PyFlink
+ENV PYFLINK_EXECUTABLE=python3
+
 # Cài đặt các thư viện Python cần thiết
 RUN pip3 install --no-cache-dir \
     apache-flink==1.17.0 \
